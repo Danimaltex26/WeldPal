@@ -1,0 +1,15 @@
+{
+  "name": "weldpal",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev:server": "cd server && node --watch index.js",
+    "dev:client": "cd client && npx vite",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "build": "cd client && npx vite build",
+    "start": "cd server && node index.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
