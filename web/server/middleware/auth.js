@@ -1,9 +1,16 @@
 // Auth middleware: verify Supabase JWT, attach user + profile, enforce per-tier gates downstream.
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
+// Anon client only for verifying the user's JWT
+const supabaseAuth = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_ANON_KEY
+);
+
+// Service-role client to read profiles (bypasses RLS — safe because we validate the JWT first)
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 export default async function auth(req, res, next) {
@@ -18,7 +25,7 @@ export default async function auth(req, res, next) {
     const {
       data: { user },
       error,
-    } = await supabase.auth.getUser(token);
+    } = await supabaseAuth.auth.getUser(token);
 
     if (error || !user) {
       return res.status(401).json({ error: "Invalid or expired token" });

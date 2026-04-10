@@ -8,7 +8,6 @@ import Onboarding from './pages/Onboarding';
 import WeldPage from './pages/WeldPage';
 import TroubleshootPage from './pages/TroubleshootPage';
 import ReferencePage from './pages/ReferencePage';
-import CertPrepPage from './pages/CertPrepPage';
 import ProfilePage from './pages/ProfilePage';
 import HistoryPage from './pages/HistoryPage';
 
@@ -38,7 +37,6 @@ export default function App() {
           <Route path="weld" element={<WeldPage />} />
           <Route path="troubleshoot" element={<TroubleshootPage />} />
           <Route path="reference" element={<ReferencePage />} />
-          <Route path="cert" element={<CertPrepPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="history" element={<HistoryPage />} />
         </Route>

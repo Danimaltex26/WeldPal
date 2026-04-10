@@ -9,7 +9,15 @@ if (!url || !anonKey) {
   );
 }
 
+// Default client — public schema (auth, profiles, subscriptions)
 export const supabase = createClient(
   url || 'https://placeholder.supabase.co',
   anonKey || 'placeholder'
+);
+
+// WeldPal-schema client for app data (weld_analyses, weld_reference, cert_prep_*, etc.)
+export const supabaseWeldpal = createClient(
+  url || 'https://placeholder.supabase.co',
+  anonKey || 'placeholder',
+  { db: { schema: 'weldpal' } }
 );

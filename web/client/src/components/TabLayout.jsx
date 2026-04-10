@@ -31,12 +31,12 @@ const tabs = [
     ),
   },
   {
-    to: '/cert',
-    label: 'Cert',
+    to: '/history',
+    label: 'History',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-        <path d="M6 12v5c0 1.66 4.03 3 9 3s9-1.34 9-3v-5" />
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="12 6 12 12 16 14" />
       </svg>
     ),
   },
@@ -55,6 +55,21 @@ const tabs = [
 export default function TabLayout() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          padding: '0.75rem 1rem',
+          borderBottom: '1px solid #2A2A2E',
+          background: '#0D0D0F',
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+        }}
+      >
+        <img src="/logo.png" alt="WeldPal" style={{ height: 64, width: 'auto' }} />
+      </header>
       <div className="tab-content">
         <Outlet />
       </div>

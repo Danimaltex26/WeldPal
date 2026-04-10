@@ -14,7 +14,8 @@ const upload = multer({
 
 const supabaseService = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  { db: { schema: "weldpal" } }
 );
 
 const anthropic = new Anthropic();
@@ -37,11 +38,11 @@ router.post("/analyze", auth, upload.array("images", 4), async (req, res) => {
         console.error("Count error:", countError);
         return res.status(500).json({ error: "Failed to check usage limits" });
       }
-      if (count >= 5) {
+      if (count >= 2) {
         return res.status(403).json({
           error: "Monthly limit reached",
-          message: "Free tier allows 5 weld analyses per month. Upgrade to Pro for unlimited.",
-          limit: 5,
+          message: "Free tier allows 2 weld analyses per month. Upgrade to Pro for unlimited.",
+          limit: 2,
           used: count,
         });
       }
@@ -60,7 +61,7 @@ router.post("/analyze", auth, upload.array("images", 4), async (req, res) => {
       const storagePath = `${userId}/${timestamp}_${safeName}`;
 
       const { error: uploadError } = await supabaseService.storage
-        .from("weld-images")
+        .from("weldpal-uploads")
         .upload(storagePath, file.buffer, {
           contentType: file.mimetype,
           upsert: false,
@@ -69,7 +70,7 @@ router.post("/analyze", auth, upload.array("images", 4), async (req, res) => {
         console.error("Upload error:", uploadError);
         return res.status(500).json({ error: "Failed to upload image" });
       }
-      const { data: urlData } = supabaseService.storage.from("weld-images").getPublicUrl(storagePath);
+      const { data: urlData } = supabaseService.storage.from("weldpal-uploads").getPublicUrl(storagePath);
       publicUrls.push(urlData.publicUrl);
 
       imageContent.push({

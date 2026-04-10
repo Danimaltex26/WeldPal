@@ -1,6 +1,9 @@
 import { supabase } from './supabase';
 
-const BASE = '/api';
+// In dev, VITE_API_URL is unset and Vite's proxy forwards /api → localhost:3002.
+// In prod (Vercel), set VITE_API_URL=https://api.weldpal.tradepals.net
+const API_ROOT = import.meta.env.VITE_API_URL || '';
+const BASE = `${API_ROOT}/api`;
 
 async function getToken() {
   const { data } = await supabase.auth.getSession();

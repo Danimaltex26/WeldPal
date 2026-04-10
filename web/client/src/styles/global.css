@@ -119,6 +119,41 @@ h3 { font-size: 1.125rem; font-weight: 600; }
 .assessment-reject { background-color: #EF4444; color: #fff; }
 .assessment-ndt { background-color: #3B82F6; color: #fff; }
 
+/* Toggle group (segmented control inside pages) */
+.toggle-group {
+  display: flex;
+  background-color: #1A1A1E;
+  border: 1px solid #2A2A2E;
+  border-radius: 8px;
+  padding: 4px;
+  gap: 4px;
+}
+.toggle-option {
+  flex: 1;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #A0A0A8;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.toggle-option:hover { color: #fff; }
+.toggle-option.active {
+  background-color: #F97316;
+  color: #0D0D0F;
+}
+
+.expandable-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  cursor: pointer;
+  gap: 0.75rem;
+}
+
 /* Tab bar */
 .tab-bar {
   position: fixed; bottom: 0; left: 0; right: 0;

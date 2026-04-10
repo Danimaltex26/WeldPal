@@ -10,13 +10,15 @@ const router = Router();
 
 const supabaseService = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  { db: { schema: "weldpal" } }
 );
 
 const anthropic = new Anthropic();
 
 router.post("/query", auth, async (req, res) => {
   try {
+    const userId = req.user.id;
     const { query } = req.body;
     if (!query || typeof query !== "string" || query.trim().length === 0) {
       return res.status(400).json({ error: "A query string is required" });
@@ -59,6 +61,24 @@ router.post("/query", auth, async (req, res) => {
       return res.json({ result: match, source: "database" });
     }
 
+    // SUBSCRIPTION GATE: only AI calls are gated. DB lookups stay free forever.
+    if (req.profile.subscription_tier === "free") {
+      const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+      const { count } = await supabaseService
+        .from("reference_queries")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .gte("created_at", startOfMonth);
+      if (count >= 5) {
+        return res.status(403).json({
+          error: "Monthly limit reached",
+          message: "Free tier allows 5 AI reference lookups per month. Upgrade to Pro for unlimited access.",
+          limit: 5,
+          used: count,
+        });
+      }
+    }
+
     // STEP 2 — no DB match, ask Claude
     // CLAUDE API CALL — generate a new reference entry
     const message = await anthropic.messages.create({
@@ -97,6 +117,7 @@ router.post("/query", auth, async (req, res) => {
 
     if (insertError) console.error("Reference insert error:", insertError);
 
+    await supabaseService.from("reference_queries").insert({ user_id: userId, query: searchTerm, source: "ai" });
     return res.json({ result: inserted || result, source: "ai" });
   } catch (err) {
     console.error("Reference query error:", err);

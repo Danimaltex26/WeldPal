@@ -1,52 +1,98 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
-  const { signIn } = useAuth();
-  const nav = useNavigate();
+  const { user, signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [err, setErr] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  async function onSubmit(e) {
+  if (user) return <Navigate to="/" replace />;
+
+  async function handleSubmit(e) {
     e.preventDefault();
-    setErr('');
-    setBusy(true);
+    if (!email.trim() || !password) return;
+    setError('');
+    setLoading(true);
     try {
-      await signIn(email, password);
-      nav('/');
-    } catch (e2) {
-      setErr(e2.message || 'Login failed');
+      await signIn(email.trim(), password);
+    } catch (err) {
+      setError(err.message || 'Sign in failed. Please try again.');
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
   }
 
   return (
-    <div className="auth-page">
-      <div className="auth-card">
-        <div className="auth-logo">Weld<span>Pal</span></div>
-        <p className="auth-tagline">AI field companion for welders &amp; CWIs</p>
-        <form onSubmit={onSubmit} className="stack">
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input id="email" type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
-          </div>
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input id="password" type="password" className="input" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
-          </div>
-          {err && <div className="error-banner">{err}</div>}
-          <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
-            {busy ? 'Signing in...' : 'Sign in'}
-          </button>
-          <p className="text-secondary text-center" style={{ fontSize: '0.875rem' }}>
-            New to WeldPal? <Link to="/signup">Create an account</Link>
-          </p>
-        </form>
-      </div>
+    <div
+      className="page"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        minHeight: '100dvh',
+        padding: '1.5rem',
+        maxWidth: 420,
+        margin: '0 auto',
+        width: '100%',
+      }}
+    >
+      <img
+        src="/logo.png"
+        alt="WeldPal"
+        style={{ width: 260, alignSelf: 'center', marginBottom: '0.5rem' }}
+      />
+      <p
+        className="text-secondary text-center"
+        style={{ marginTop: '0.25rem', marginBottom: '2rem', fontSize: '0.875rem' }}
+      >
+        AI field companion for welders &amp; CWIs
+      </p>
+
+      {error && <div className="error-banner" style={{ marginBottom: '1rem' }}>{error}</div>}
+
+      <form onSubmit={handleSubmit} className="stack">
+        <div className="form-group">
+          <label htmlFor="email">Email</label>
+          <input
+            id="email"
+            type="email"
+            className="input"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="password">Password</label>
+          <input
+            id="password"
+            type="password"
+            className="input"
+            placeholder="Your password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+          />
+        </div>
+
+        <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
+          {loading ? 'Signing in...' : 'Sign In'}
+        </button>
+      </form>
+
+      <p
+        className="text-center text-secondary"
+        style={{ marginTop: '1.5rem', fontSize: '0.875rem' }}
+      >
+        Don't have an account? <Link to="/signup">Sign Up</Link>
+      </p>
     </div>
   );
 }

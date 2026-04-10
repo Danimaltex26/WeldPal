@@ -27,8 +27,12 @@ export function AuthProvider({ children }) {
     if (error) throw error;
     return data;
   }
-  async function signUp(email, password) {
-    const { data, error } = await supabase.auth.signUp({ email, password });
+  async function signUp(email, password, displayName) {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: displayName ? { data: { display_name: displayName } } : undefined,
+    });
     if (error) throw error;
     return data;
   }

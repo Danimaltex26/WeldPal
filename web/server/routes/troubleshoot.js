@@ -9,7 +9,8 @@ const router = Router();
 
 const supabaseService = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  { db: { schema: "weldpal" } }
 );
 
 const anthropic = new Anthropic();
@@ -38,7 +39,7 @@ router.post("/", auth, async (req, res) => {
         .select("*", { count: "exact", head: true })
         .eq("user_id", userId)
         .gte("created_at", startOfMonth);
-      if (count >= 5) {
+      if (count >= 2) {
         return res.status(403).json({
           error: "Monthly limit reached",
           message: "Free tier allows 5 troubleshoot sessions per month. Upgrade to Pro for unlimited.",
