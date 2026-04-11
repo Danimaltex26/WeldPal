@@ -1,9 +1,32 @@
 import { NavLink, Outlet } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { getQueueByStatus } from '../utils/offlineDb';
+
+const ACTIVE_COLOR = '#F97316';
+
+function useQueueBadge() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    async function check() {
+      const pending = await getQueueByStatus('pending');
+      const completed = await getQueueByStatus('completed');
+      const failed = await getQueueByStatus('failed');
+      setCount(pending.length + completed.length + failed.length);
+    }
+    check();
+    const interval = setInterval(check, 3000); // poll every 3s
+    return () => clearInterval(interval);
+  }, []);
+
+  return count;
+}
 
 const tabs = [
   {
     to: '/weld',
     label: 'Weld',
+    hasBadge: true,
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
@@ -53,6 +76,8 @@ const tabs = [
 ];
 
 export default function TabLayout() {
+  const badgeCount = useQueueBadge();
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
       <header
@@ -79,9 +104,30 @@ export default function TabLayout() {
             key={tab.to}
             to={tab.to}
             className={({ isActive }) => `tab-item${isActive ? ' active' : ''}`}
+            style={{ position: 'relative' }}
           >
             {tab.icon}
             <span>{tab.label}</span>
+            {tab.hasBadge && badgeCount > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: -4,
+                right: -8,
+                backgroundColor: '#EF4444',
+                color: '#fff',
+                fontSize: 10,
+                fontWeight: 700,
+                borderRadius: '50%',
+                width: 18,
+                height: 18,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                lineHeight: 1,
+              }}>
+                {badgeCount > 9 ? '9+' : badgeCount}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

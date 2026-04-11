@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
 import auth from "../middleware/auth.js";
 import { WELD_ANALYSIS_SYSTEM_PROMPT } from "../prompts/weld.js";
+import { sendAnalysisReadyEmail } from "../utils/email.js";
 
 const router = Router();
 const upload = multer({
@@ -137,6 +138,14 @@ router.post("/analyze", auth, upload.array("images", 4), async (req, res) => {
       console.error("Save error:", saveError);
       return res.json({ result, saved: false, save_error: saveError.message });
     }
+
+    // Send email notification (fire-and-forget, don't block response)
+    sendAnalysisReadyEmail({
+      to: req.user.email,
+      appKey: "weldpal",
+      displayName: req.profile?.display_name || req.user.email,
+      analysisType: weld_process || "weld",
+    }).catch((err) => console.error("Email notification error:", err));
 
     return res.json({ result, record_id: saved.id });
   } catch (err) {

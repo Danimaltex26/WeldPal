@@ -3,6 +3,8 @@
 import { useRef, useState } from 'react';
 import { apiUpload } from '../utils/api';
 import LoadingSpinner from '../components/LoadingSpinner';
+import OfflineQueue from '../components/OfflineQueue';
+import useOfflineQueue from '../hooks/useOfflineQueue';
 
 const PROCESSES = ['MIG/GMAW', 'TIG/GTAW', 'Stick/SMAW', 'Flux-Core/FCAW', 'Submerged Arc/SAW', 'Other'];
 const MATERIALS = ['Carbon Steel', 'Stainless Steel', 'Aluminum', 'Alloy Steel', 'Cast Iron', 'Other'];
@@ -42,7 +44,9 @@ export default function WeldPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
   const [result, setResult] = useState(null);
+  const [queued, setQueued] = useState(false);
   const fileInputRef = useRef(null);
+  const offlineQueue = useOfflineQueue();
 
   function onPickFiles(e) {
     const picked = Array.from(e.target.files || []).slice(0, 4);
@@ -50,6 +54,7 @@ export default function WeldPage() {
     setPreviews(picked.map((f) => URL.createObjectURL(f)));
     setErr('');
     setResult(null);
+    setQueued(false);
   }
 
   async function analyze() {
@@ -57,9 +62,27 @@ export default function WeldPage() {
       setErr('Please upload a photo of the weld first.');
       return;
     }
-    setLoading(true);
+
     setErr('');
     setResult(null);
+    setQueued(false);
+
+    // If offline, queue it
+    if (!navigator.onLine) {
+      await offlineQueue.enqueue(files, {
+        weld_process: process,
+        base_material: material,
+        code_standard: code,
+      });
+      setQueued(true);
+      setFiles([]);
+      setPreviews([]);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    // Online — upload directly
+    setLoading(true);
     try {
       const fd = new FormData();
       files.forEach((f) => fd.append('images', f));
@@ -69,9 +92,22 @@ export default function WeldPage() {
       const res = await apiUpload('/weld/analyze', fd);
       setResult(res.result);
     } catch (e) {
-      setErr(e.message || 'Analysis failed');
+      // If upload fails (network dropped mid-request), queue it
+      if (!navigator.onLine || e.message?.includes('fetch') || e.message?.includes('network') || e.message?.includes('Network')) {
+        await offlineQueue.enqueue(files, {
+          weld_process: process,
+          base_material: material,
+          code_standard: code,
+        });
+        setQueued(true);
+        setFiles([]);
+        setPreviews([]);
+      } else {
+        setErr(e.message || 'Analysis failed');
+      }
     } finally {
       setLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }
 
@@ -80,7 +116,15 @@ export default function WeldPage() {
     setPreviews([]);
     setResult(null);
     setErr('');
+    setQueued(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  function handleViewQueueResult(item) {
+    if (item.result) {
+      setResult(item.result);
+      offlineQueue.dismiss(item.id);
+    }
   }
 
   return (
@@ -89,6 +133,20 @@ export default function WeldPage() {
         <h1>Weld Analyzer</h1>
         <p className="text-secondary">Photograph a weld for AI surface assessment.</p>
       </div>
+
+      {/* Offline indicator */}
+      {!navigator.onLine && !result && (
+        <div className="warning-box" style={{ fontSize: '0.875rem' }}>
+          You are offline. Photos will be queued and processed automatically when you reconnect.
+        </div>
+      )}
+
+      {/* Queued confirmation */}
+      {queued && !result && (
+        <div className="info-box" style={{ fontSize: '0.875rem' }}>
+          Photo queued! It will be processed automatically when you're back online.
+        </div>
+      )}
 
       {!result && (
         <div className="stack">
@@ -148,10 +206,20 @@ export default function WeldPage() {
           {err && <div className="error-banner">{err}</div>}
 
           <button className="btn btn-primary btn-block" onClick={analyze} disabled={loading || !files.length}>
-            Analyze this weld
+            {navigator.onLine ? 'Analyze this weld' : 'Queue for analysis'}
           </button>
+
+          {/* Offline Queue */}
+          <OfflineQueue
+            queue={offlineQueue.queue}
+            processing={offlineQueue.processing}
+            onRetry={offlineQueue.retry}
+            onDismiss={offlineQueue.dismiss}
+            onViewResult={handleViewQueueResult}
+            onClearCompleted={offlineQueue.clearCompleted}
+          />
         </div>
-      )}
+      )
 
       {loading && <LoadingSpinner messages={LOADING_MESSAGES} />}
 
