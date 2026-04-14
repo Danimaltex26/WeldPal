@@ -233,7 +233,7 @@ export default function WeldPage() {
             <span className={`badge badge-lg ${assessmentClass(result.overall_assessment)}`}>
               {assessmentLabel(result.overall_assessment)}
             </span>
-            {model && <span style={{ fontSize: '0.6875rem', fontWeight: 400, color: '#6B6B73' }}>{model}</span>}
+            {model && <div style={{ fontSize: '0.6875rem', color: '#6B6B73', marginTop: '0.25rem' }}>{model}</div>}
           </div>
 
           {previews.length > 0 && previews.map((src, i) => (

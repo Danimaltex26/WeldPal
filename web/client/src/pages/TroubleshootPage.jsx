@@ -147,7 +147,8 @@ export default function TroubleshootPage() {
         <div className="stack">
           {result.plain_english_summary && (
             <div className="card">
-              <h3 style={{ marginBottom: '0.5rem' }}>Diagnosis {model && <span style={{ fontSize: '0.6875rem', fontWeight: 400, color: '#6B6B73' }}>{model}</span>}</h3>
+              <h3 style={{ marginBottom: '0.5rem' }}>Diagnosis</h3>
+              {model && <div style={{ fontSize: '0.6875rem', color: '#6B6B73', marginTop: '0.25rem' }}>{model}</div>}
               <p>{result.plain_english_summary}</p>
             </div>
           )}

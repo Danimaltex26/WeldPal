@@ -60,7 +60,8 @@ export default function ReferencePage() {
     return (
       <div className="card stack">
         <div>
-          <h3>{entry.title} {model && <span style={{ fontSize: '0.6875rem', fontWeight: 400, color: '#6B6B73' }}>{model}</span>}</h3>
+          <h3>{entry.title}</h3>
+          {model && <div style={{ fontSize: '0.6875rem', color: '#6B6B73', marginTop: '0.25rem' }}>{model}</div>}
           <p className="text-secondary" style={{ fontSize: '0.8125rem' }}>
             {[entry.process, entry.base_material, entry.specification].filter(Boolean).join(' • ')}
           </p>
