@@ -254,6 +254,24 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* Upgrade to Pro */}
+        {isFree && (
+          <div className="card" style={{ textAlign: 'center', padding: '1.5rem' }}>
+            <h3 style={{ marginBottom: '0.5rem' }}>Upgrade to Pro</h3>
+            <p className="text-secondary" style={{ fontSize: '0.8125rem', marginBottom: '1rem' }}>
+              Unlimited photo analyses, troubleshoot sessions, AI reference lookups, full training content, and priority processing.
+            </p>
+            <a
+              href="https://tradepals.net/#pricing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-primary btn-block"
+            >
+              View Pro Plans
+            </a>
+          </div>
+        )}
+
         {/* Welding Processes */}
         <div className="card">
           <h3 style={{ marginBottom: '0.75rem' }}>My Welding Processes</h3>
