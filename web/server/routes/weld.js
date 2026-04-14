@@ -2,10 +2,10 @@
 import { Router } from "express";
 import multer from "multer";
 import { createClient } from "@supabase/supabase-js";
-import Anthropic from "@anthropic-ai/sdk";
 import auth from "../middleware/auth.js";
 import { WELD_ANALYSIS_SYSTEM_PROMPT } from "../prompts/weld.js";
 import { sendAnalysisReadyEmail } from "../utils/email.js";
+import { callClaude } from "../utils/claudeClient.js";
 
 const router = Router();
 const upload = multer({
@@ -18,8 +18,6 @@ const supabaseService = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY,
   { db: { schema: "weldpal" } }
 );
-
-const anthropic = new Anthropic();
 
 router.post("/analyze", auth, upload.array("images", 4), async (req, res) => {
   try {
@@ -96,14 +94,13 @@ router.post("/analyze", auth, upload.array("images", 4), async (req, res) => {
     });
 
     // CLAUDE API CALL — vision analysis of weld photo
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 2048,
-      system: WELD_ANALYSIS_SYSTEM_PROMPT,
+    var aiResult = await callClaude({
+      feature: 'photo_diagnosis',
+      systemPrompt: WELD_ANALYSIS_SYSTEM_PROMPT,
       messages: [{ role: "user", content: imageContent }],
     });
 
-    const rawText = message.content[0].text;
+    const rawText = aiResult.content;
     let result;
     try {
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);

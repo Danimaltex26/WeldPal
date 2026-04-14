@@ -2,9 +2,10 @@
 // GET  /api/reference/browse — filter list for browse mode.
 import { Router } from "express";
 import { createClient } from "@supabase/supabase-js";
-import Anthropic from "@anthropic-ai/sdk";
 import auth from "../middleware/auth.js";
 import { REFERENCE_SYSTEM_PROMPT } from "../prompts/reference.js";
+import { callClaude } from "../utils/claudeClient.js";
+import { requiresSpecificClause } from "../utils/modelRouter.js";
 
 const router = Router();
 
@@ -13,8 +14,6 @@ const supabaseService = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY,
   { db: { schema: "weldpal" } }
 );
-
-const anthropic = new Anthropic();
 
 router.post("/query", auth, async (req, res) => {
   try {
@@ -81,14 +80,14 @@ router.post("/query", auth, async (req, res) => {
 
     // STEP 2 — no DB match, ask Claude
     // CLAUDE API CALL — generate a new reference entry
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 2048,
-      system: REFERENCE_SYSTEM_PROMPT,
+    var feature = requiresSpecificClause(searchTerm) ? 'code_citation' : 'reference_lookup';
+    var aiResult = await callClaude({
+      feature: feature,
+      systemPrompt: REFERENCE_SYSTEM_PROMPT,
       messages: [{ role: "user", content: query }],
     });
 
-    const rawText = message.content[0].text;
+    const rawText = aiResult.content;
     let result;
     try {
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);

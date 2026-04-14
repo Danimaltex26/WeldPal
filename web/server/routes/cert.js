@@ -5,9 +5,9 @@
 //   POST /api/cert/generate        — AI generates more questions when bank is thin
 import { Router } from "express";
 import { createClient } from "@supabase/supabase-js";
-import Anthropic from "@anthropic-ai/sdk";
 import auth from "../middleware/auth.js";
 import { CERT_GENERATE_SYSTEM_PROMPT } from "../prompts/cert.js";
+import { callClaude } from "../utils/claudeClient.js";
 
 const router = Router();
 
@@ -16,8 +16,6 @@ const supabaseService = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY,
   { db: { schema: "weldpal" } }
 );
-
-const anthropic = new Anthropic();
 
 // GET /api/cert/questions?cert_level=CWI&category=visual_inspection&limit=10
 router.get("/questions", auth, async (req, res) => {
@@ -127,10 +125,9 @@ router.post("/generate", auth, async (req, res) => {
     const { cert_level, category, count = 5 } = req.body;
 
     // CLAUDE API CALL — generate new exam questions
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 4096,
-      system: CERT_GENERATE_SYSTEM_PROMPT,
+    var aiResult = await callClaude({
+      feature: 'question_generation',
+      systemPrompt: CERT_GENERATE_SYSTEM_PROMPT,
       messages: [
         {
           role: "user",
@@ -139,7 +136,7 @@ router.post("/generate", auth, async (req, res) => {
       ],
     });
 
-    const rawText = message.content[0].text;
+    const rawText = aiResult.content;
     let questions;
     try {
       const jsonMatch = rawText.match(/\[[\s\S]*\]/);

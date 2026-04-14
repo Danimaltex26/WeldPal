@@ -1,9 +1,9 @@
 // POST /api/troubleshoot — structured form → AI diagnosis with optional follow-up.
 import { Router } from "express";
 import { createClient } from "@supabase/supabase-js";
-import Anthropic from "@anthropic-ai/sdk";
 import auth from "../middleware/auth.js";
 import { TROUBLESHOOT_SYSTEM_PROMPT } from "../prompts/troubleshoot.js";
+import { callClaude } from "../utils/claudeClient.js";
 
 const router = Router();
 
@@ -12,8 +12,6 @@ const supabaseService = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY,
   { db: { schema: "weldpal" } }
 );
-
-const anthropic = new Anthropic();
 
 router.post("/", auth, async (req, res) => {
   try {
@@ -80,14 +78,14 @@ router.post("/", auth, async (req, res) => {
     const messages = [...existingHistory, { role: "user", content: userMessage }];
 
     // CLAUDE API CALL — text-only troubleshoot diagnosis
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 2048,
-      system: TROUBLESHOOT_SYSTEM_PROMPT,
+    var aiResult = await callClaude({
+      feature: 'troubleshoot',
+      context: { conversationHistory: existingHistory, symptom: req.body.symptom || '' },
+      systemPrompt: TROUBLESHOOT_SYSTEM_PROMPT,
       messages,
     });
 
-    const rawText = message.content[0].text;
+    const rawText = aiResult.content;
     let result;
     try {
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);
