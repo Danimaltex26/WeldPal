@@ -2,6 +2,7 @@
 // IMPORTANT: scope disclaimer (visual surface defects only) is shown on every result.
 import { useRef, useState } from 'react';
 import { apiUpload } from '../utils/api';
+import { compressImage } from '../utils/compressImage';
 import LoadingSpinner from '../components/LoadingSpinner';
 import OfflineQueue from '../components/OfflineQueue';
 import useOfflineQueue from '../hooks/useOfflineQueue';
@@ -86,7 +87,10 @@ export default function WeldPage() {
     setLoading(true);
     try {
       const fd = new FormData();
-      files.forEach((f) => fd.append('images', f));
+      for (let i = 0; i < files.length; i++) {
+        const compressed = await compressImage(files[i]);
+        fd.append('images', compressed);
+      }
       if (process) fd.append('weld_process', process);
       if (material) fd.append('base_material', material);
       if (code) fd.append('code_standard', code);
