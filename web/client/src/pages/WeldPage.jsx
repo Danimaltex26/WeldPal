@@ -219,7 +219,7 @@ export default function WeldPage() {
             onClearCompleted={offlineQueue.clearCompleted}
           />
         </div>
-      )
+      )}
 
       {loading && <LoadingSpinner messages={LOADING_MESSAGES} />}
 
