@@ -31,6 +31,7 @@ export default function TroubleshootPage() {
   const [followUp, setFollowUp] = useState('');
   const [sessionId, setSessionId] = useState(null);
   const [result, setResult] = useState(null);
+  const [model, setModel] = useState('');
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
 
@@ -46,6 +47,7 @@ export default function TroubleshootPage() {
     try {
       const res = await apiPost('/troubleshoot', { ...form, already_tried: tried });
       setResult(res.result);
+      setModel(res.model || '');
       setSessionId(res.session_id);
     } catch (e) {
       setErr(e.message);
@@ -60,6 +62,7 @@ export default function TroubleshootPage() {
     try {
       const res = await apiPost('/troubleshoot', { session_id: sessionId, follow_up: followUp });
       setResult(res.result);
+      setModel(res.model || '');
       setFollowUp('');
     } catch (e) {
       setErr(e.message);
@@ -70,7 +73,7 @@ export default function TroubleshootPage() {
 
   function reset() {
     setForm({ weld_process: '', base_material: '', filler_metal: '', position: '', symptom: '', environment: '', current_parameters: '' });
-    setTried([]); setResult(null); setSessionId(null); setFollowUp(''); setErr('');
+    setTried([]); setResult(null); setModel(''); setSessionId(null); setFollowUp(''); setErr('');
   }
 
   return (
@@ -144,7 +147,7 @@ export default function TroubleshootPage() {
         <div className="stack">
           {result.plain_english_summary && (
             <div className="card">
-              <h3 style={{ marginBottom: '0.5rem' }}>Diagnosis</h3>
+              <h3 style={{ marginBottom: '0.5rem' }}>Diagnosis {model && <span style={{ fontSize: '0.6875rem', fontWeight: 400, color: '#6B6B73' }}>{model}</span>}</h3>
               <p>{result.plain_english_summary}</p>
             </div>
           )}

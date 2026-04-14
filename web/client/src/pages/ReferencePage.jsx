@@ -18,6 +18,7 @@ export default function ReferencePage() {
   const [tab, setTab] = useState('');
   const [items, setItems] = useState([]);
   const [active, setActive] = useState(null);
+  const [model, setModel] = useState('');
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
 
@@ -42,10 +43,11 @@ export default function ReferencePage() {
   async function search(e) {
     e?.preventDefault();
     if (!query.trim()) return;
-    setLoading(true); setErr(''); setActive(null);
+    setLoading(true); setErr(''); setActive(null); setModel('');
     try {
       const res = await apiPost('/reference/query', { query });
       setActive(res.result);
+      setModel(res.model || '');
     } catch (e) {
       setErr(e.message);
     } finally {
@@ -58,7 +60,7 @@ export default function ReferencePage() {
     return (
       <div className="card stack">
         <div>
-          <h3>{entry.title}</h3>
+          <h3>{entry.title} {model && <span style={{ fontSize: '0.6875rem', fontWeight: 400, color: '#6B6B73' }}>{model}</span>}</h3>
           <p className="text-secondary" style={{ fontSize: '0.8125rem' }}>
             {[entry.process, entry.base_material, entry.specification].filter(Boolean).join(' • ')}
           </p>
@@ -101,7 +103,7 @@ export default function ReferencePage() {
 
       <div className="chip-row" style={{ marginBottom: '1rem' }}>
         {TABS.map((t) => (
-          <button key={t.label} className={`chip${tab === t.key ? ' active' : ''}`} onClick={() => { setTab(t.key); setActive(null); }}>
+          <button key={t.label} className={`chip${tab === t.key ? ' active' : ''}`} onClick={() => { setTab(t.key); setActive(null); setModel(''); }}>
             {t.label}
           </button>
         ))}
@@ -113,7 +115,7 @@ export default function ReferencePage() {
       {!loading && active && (
         <div className="stack">
           {renderEntry(active)}
-          <button className="btn btn-ghost btn-block" onClick={() => setActive(null)}>Back to browse</button>
+          <button className="btn btn-ghost btn-block" onClick={() => { setActive(null); setModel(''); }}>Back to browse</button>
         </div>
       )}
 

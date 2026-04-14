@@ -44,6 +44,7 @@ export default function WeldPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
   const [result, setResult] = useState(null);
+  const [model, setModel] = useState('');
   const [queued, setQueued] = useState(false);
   const fileInputRef = useRef(null);
   const offlineQueue = useOfflineQueue();
@@ -91,6 +92,7 @@ export default function WeldPage() {
       if (code) fd.append('code_standard', code);
       const res = await apiUpload('/weld/analyze', fd);
       setResult(res.result);
+      setModel(res.model || '');
     } catch (e) {
       // If upload fails (network dropped mid-request), queue it
       if (!navigator.onLine || e.message?.includes('fetch') || e.message?.includes('network') || e.message?.includes('Network')) {
@@ -115,6 +117,7 @@ export default function WeldPage() {
     setFiles([]);
     setPreviews([]);
     setResult(null);
+    setModel('');
     setErr('');
     setQueued(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -123,6 +126,7 @@ export default function WeldPage() {
   function handleViewQueueResult(item) {
     if (item.result) {
       setResult(item.result);
+      setModel(item.model || '');
       offlineQueue.dismiss(item.id);
     }
   }
@@ -229,6 +233,7 @@ export default function WeldPage() {
             <span className={`badge badge-lg ${assessmentClass(result.overall_assessment)}`}>
               {assessmentLabel(result.overall_assessment)}
             </span>
+            {model && <span style={{ fontSize: '0.6875rem', fontWeight: 400, color: '#6B6B73' }}>{model}</span>}
           </div>
 
           {previews.length > 0 && previews.map((src, i) => (

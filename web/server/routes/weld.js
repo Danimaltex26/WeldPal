@@ -133,7 +133,7 @@ router.post("/analyze", auth, upload.array("images", 4), async (req, res) => {
 
     if (saveError) {
       console.error("Save error:", saveError);
-      return res.json({ result, saved: false, save_error: saveError.message });
+      return res.json({ result, saved: false, save_error: saveError.message, model: aiResult.model });
     }
 
     // Send email notification (fire-and-forget, don't block response)
@@ -144,7 +144,7 @@ router.post("/analyze", auth, upload.array("images", 4), async (req, res) => {
       analysisType: weld_process || "weld",
     }).catch((err) => console.error("Email notification error:", err));
 
-    return res.json({ result, record_id: saved.id });
+    return res.json({ result, record_id: saved.id, model: aiResult.model });
   } catch (err) {
     console.error("Weld analyze error:", err);
     return res.status(500).json({ error: "Internal server error" });
