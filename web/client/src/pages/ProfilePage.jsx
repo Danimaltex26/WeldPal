@@ -6,6 +6,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 
 const PROCESS_OPTIONS = ['MIG/GMAW', 'TIG/GTAW', 'Stick/SMAW', 'Flux-Core/FCAW', 'Submerged Arc/SAW'];
 const CERT_OPTIONS = ['CW', 'CAWI', 'CWI', 'CWS', 'CRAW', 'CWEng'];
+const SPECIALTIES = ['Structural', 'Pipeline', 'Pressure Vessel', 'Manufacturing', 'Shipbuilding', 'Aerospace', 'Mobile / Rig Welding', 'Ornamental / Artistic'];
 
 export default function ProfilePage() {
   const { user, signOut } = useAuth();
@@ -20,6 +21,7 @@ export default function ProfilePage() {
 
   const [newProcess, setNewProcess] = useState('');
   const [newCert, setNewCert] = useState('');
+  const [newSpecialty, setNewSpecialty] = useState('');
 
   useEffect(() => {
     loadProfile();
@@ -81,6 +83,19 @@ export default function ProfilePage() {
     await patchProfile({ welding_processes: updated });
   }
 
+  async function addSpecialty() {
+    if (!newSpecialty) return;
+    if ((profile.specialties || []).includes(newSpecialty)) return;
+    const updated = [...(profile.specialties || []), newSpecialty];
+    await patchProfile({ specialties: updated });
+    setNewSpecialty('');
+  }
+
+  async function removeSpecialty(s) {
+    const updated = (profile.specialties || []).filter((x) => x !== s);
+    await patchProfile({ specialties: updated });
+  }
+
   async function addCertification() {
     if (!newCert) return;
     if ((profile.certifications || []).includes(newCert)) return;
@@ -122,7 +137,7 @@ export default function ProfilePage() {
   const isFree = tier.toLowerCase() === 'free';
 
   return (
-    <div className="page">
+    <div className="page stack">
       <div className="stack">
         <div className="page-header">
           <h2>Profile</h2>
@@ -254,24 +269,6 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Upgrade to Pro */}
-        {isFree && (
-          <div className="card" style={{ textAlign: 'center', padding: '1.5rem' }}>
-            <h3 style={{ marginBottom: '0.5rem' }}>Upgrade to Pro</h3>
-            <p className="text-secondary" style={{ fontSize: '0.8125rem', marginBottom: '1rem' }}>
-              Unlimited photo analyses, troubleshoot sessions, AI reference lookups, full training content, and priority processing.
-            </p>
-            <a
-              href="https://tradepals.net/#pricing"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-primary btn-block"
-            >
-              View Pro Plans
-            </a>
-          </div>
-        )}
-
         {/* Welding Processes */}
         <div className="card">
           <h3 style={{ marginBottom: '0.75rem' }}>My Welding Processes</h3>
@@ -310,6 +307,49 @@ export default function ProfilePage() {
                 ))}
             </select>
             <button className="btn btn-secondary" onClick={addProcess} style={{ flexShrink: 0 }}>
+              Add
+            </button>
+          </div>
+        </div>
+
+        {/* Service Specialties */}
+        <div className="card">
+          <h3 style={{ marginBottom: '0.75rem' }}>My Service Specialties</h3>
+          {profile?.specialties?.length > 0 ? (
+            <div className="stack-sm" style={{ marginBottom: '0.75rem' }}>
+              {profile.specialties.map((s) => (
+                <div key={s} className="row-between" style={{ minHeight: 40 }}>
+                  <span>{s}</span>
+                  <button
+                    className="btn btn-ghost"
+                    style={{ color: '#EF4444', minHeight: 36, padding: '0.25rem 0.5rem' }}
+                    onClick={() => removeSpecialty(s)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted" style={{ marginBottom: '0.75rem', fontSize: '0.875rem' }}>
+              No specialties added yet.
+            </p>
+          )}
+          <div className="row" style={{ gap: '0.5rem' }}>
+            <select
+              className="select"
+              value={newSpecialty}
+              onChange={(e) => setNewSpecialty(e.target.value)}
+              style={{ flex: 1 }}
+            >
+              <option value="">Select specialty...</option>
+              {SPECIALTIES
+                .filter((s) => !(profile?.specialties || []).includes(s))
+                .map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+            </select>
+            <button className="btn btn-secondary" onClick={addSpecialty} style={{ flexShrink: 0 }}>
               Add
             </button>
           </div>
@@ -357,6 +397,24 @@ export default function ProfilePage() {
             </button>
           </div>
         </div>
+
+        {/* Upgrade to Pro */}
+        {isFree && (
+          <div className="card" style={{ textAlign: 'center', padding: '1.5rem' }}>
+            <h3 style={{ marginBottom: '0.5rem' }}>Upgrade to Pro</h3>
+            <p className="text-secondary" style={{ fontSize: '0.8125rem', marginBottom: '1rem' }}>
+              Unlimited photo analyses, troubleshoot sessions, AI reference lookups, full training content, and priority processing.
+            </p>
+            <a
+              href="https://tradepals.net/#pricing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-primary btn-block"
+            >
+              View Pro Plans
+            </a>
+          </div>
+        )}
 
         {/* Sign Out */}
         <button className="btn btn-danger btn-block" onClick={handleSignOut}>
