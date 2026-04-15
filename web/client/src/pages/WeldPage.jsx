@@ -36,6 +36,26 @@ function assessmentLabel(a) {
   }
 }
 
+function actionBadgeClass(action) {
+  if (!action) return 'badge badge-gray';
+  const lower = String(action).toLowerCase();
+  if (lower.includes('accept') || lower.includes('minor') || lower.includes('pass'))
+    return 'badge badge-green';
+  if (lower.includes('borderline') || lower.includes('moderate') || lower.includes('repair') || lower.includes('requires_measurement') || lower.includes('further'))
+    return 'badge badge-amber';
+  if (lower.includes('reject') || lower.includes('severe') || lower.includes('fail'))
+    return 'badge badge-red';
+  return 'badge badge-gray';
+}
+
+function confidenceBadgeClass(confidence) {
+  if (!confidence) return 'badge badge-gray';
+  const lower = String(confidence).toLowerCase();
+  if (lower.includes('high')) return 'badge badge-green';
+  if (lower.includes('medium')) return 'badge badge-amber';
+  return 'badge badge-red';
+}
+
 export default function WeldPage() {
   const [process, setProcess] = useState('');
   const [material, setMaterial] = useState('');
@@ -231,86 +251,211 @@ export default function WeldPage() {
 
       {loading && <LoadingSpinner messages={LOADING_MESSAGES} />}
 
-      {result && (
-        <div className="stack">
-          <div style={{ textAlign: 'center' }}>
-            <span className={`badge badge-lg ${assessmentClass(result.overall_assessment)}`}>
-              {assessmentLabel(result.overall_assessment)}
-            </span>
-            {model && <div style={{ fontSize: '0.6875rem', color: '#6B6B73', marginTop: '0.25rem' }}>{model}</div>}
-          </div>
+      {result && (() => {
+        const ctx = result.weld_context;
+        const params = result.parameter_adjustments;
+        const imageUsable = result.is_weld_image !== false && result.image_quality?.usable !== false;
+        const defects = Array.isArray(result.defects) ? result.defects : [];
+        const realDefects = defects.filter((d) => d && d.defect_type && d.defect_type !== 'none_detected');
+        const hasParamAdjustments = params && Object.values(params).some((v) => v);
+        const hasContext = ctx && (
+          (ctx.likely_process && ctx.likely_process !== 'Unknown') ||
+          (ctx.likely_position && ctx.likely_position !== 'Unknown') ||
+          (ctx.base_material_guess && ctx.base_material_guess !== 'Unknown') ||
+          (ctx.joint_type_guess && ctx.joint_type_guess !== 'Unknown')
+        );
 
-          {previews.length > 0 && previews.map((src, i) => (
-            <img key={i} src={src} alt={`Weld ${i + 1}`} className="image-preview" />
-          ))}
+        return (
+          <div className="stack">
+            {previews.length > 0 && previews.map((src, i) => (
+              <img key={i} src={src} alt={`Weld ${i + 1}`} className="image-preview" />
+            ))}
 
-          {result.plain_english_summary && (
-            <div className="card">
-              <h3 style={{ marginBottom: '0.5rem' }}>Summary</h3>
-              <p>{result.plain_english_summary}</p>
-            </div>
-          )}
-
-          {result.assessment_reasoning && (
-            <div className="card">
-              <h3 style={{ marginBottom: '0.5rem' }}>Reasoning</h3>
-              <p className="text-secondary">{result.assessment_reasoning}</p>
-            </div>
-          )}
-
-          {Array.isArray(result.defects_identified) && result.defects_identified.length > 0 && (
-            <div className="card">
-              <h3 style={{ marginBottom: '0.75rem' }}>Defects identified</h3>
-              <div className="stack">
-                {result.defects_identified.map((d, i) => (
-                  <div key={i} style={{ borderTop: i ? '1px solid #2A2A2E' : 'none', paddingTop: i ? '0.875rem' : 0 }}>
-                    <div className="row" style={{ marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-                      <span className="badge badge-orange">{(d.defect_type || '').replace(/_/g, ' ')}</span>
-                      {d.severity && <span className="badge badge-gray">{d.severity}</span>}
-                      {d.code_accept_reject && <span className={`badge ${d.code_accept_reject === 'accept' ? 'badge-green' : d.code_accept_reject === 'reject' ? 'badge-red' : 'badge-amber'}`}>{d.code_accept_reject}</span>}
-                    </div>
-                    {d.location && <p style={{ fontSize: '0.875rem' }}><strong>Location:</strong> {d.location}</p>}
-                    {d.probable_cause && <p style={{ fontSize: '0.875rem' }} className="text-secondary"><strong>Cause:</strong> {d.probable_cause}</p>}
-                    {d.corrective_action && <p style={{ fontSize: '0.875rem' }} className="text-secondary"><strong>Fix:</strong> {d.corrective_action}</p>}
-                  </div>
-                ))}
+            {/* Unusable image warning */}
+            {!imageUsable && (
+              <div className="warning-box">
+                <strong>Image could not be analyzed.</strong>
+                {result.image_quality?.quality_note && (
+                  <p style={{ marginTop: '0.25rem' }}>{result.image_quality.quality_note}</p>
+                )}
               </div>
+            )}
+
+            {/* Overall Assessment Badge */}
+            {imageUsable && result.overall_assessment && (
+              <div className="card" style={{ textAlign: 'center' }}>
+                <span className={`badge badge-lg ${assessmentClass(result.overall_assessment)}`} style={{ fontSize: '1.25rem', padding: '0.5rem 1.5rem' }}>
+                  {assessmentLabel(result.overall_assessment)}
+                </span>
+                {model && <div style={{ fontSize: '0.6875rem', color: '#6B6B73', marginTop: '0.5rem' }}>{model}</div>}
+              </div>
+            )}
+
+            {/* Assessment Reasoning (main summary) */}
+            {result.assessment_reasoning && (
+              <div className="card">
+                <p style={{ fontSize: '1.0625rem', lineHeight: 1.6 }}>{result.assessment_reasoning}</p>
+              </div>
+            )}
+
+            {/* Detected Context */}
+            {hasContext && (
+              <div className="card">
+                <h3 style={{ marginBottom: '0.75rem' }}>Detected</h3>
+                <div className="stack-sm">
+                  {ctx.likely_process && ctx.likely_process !== 'Unknown' && (
+                    <div className="row-between">
+                      <span className="text-secondary">Process</span>
+                      <span className="badge badge-blue">{ctx.likely_process}</span>
+                    </div>
+                  )}
+                  {ctx.base_material_guess && ctx.base_material_guess !== 'Unknown' && (
+                    <div className="row-between">
+                      <span className="text-secondary">Base Material</span>
+                      <span style={{ fontWeight: 600 }}>{ctx.base_material_guess}</span>
+                    </div>
+                  )}
+                  {ctx.likely_position && ctx.likely_position !== 'Unknown' && (
+                    <div className="row-between">
+                      <span className="text-secondary">Position</span>
+                      <span style={{ fontWeight: 600 }}>{ctx.likely_position}</span>
+                    </div>
+                  )}
+                  {ctx.joint_type_guess && ctx.joint_type_guess !== 'Unknown' && (
+                    <div className="row-between">
+                      <span className="text-secondary">Joint Type</span>
+                      <span style={{ fontWeight: 600 }}>{ctx.joint_type_guess}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Defects */}
+            {imageUsable && realDefects.length > 0 && (
+              <div className="card">
+                <h3 style={{ marginBottom: '0.75rem' }}>Defects Found</h3>
+                <div className="stack-sm">
+                  {realDefects.map((d, i) => (
+                    <div key={i} style={{ padding: '0.75rem', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 8 }}>
+                      <div className="row-between" style={{ marginBottom: '0.25rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <strong>{d.defect_type.replace(/_/g, ' ')}</strong>
+                        <span style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
+                          {d.severity && <span className={actionBadgeClass(d.severity)}>{d.severity}</span>}
+                          {d.code_disposition && <span className={actionBadgeClass(d.code_disposition)}>{d.code_disposition.replace(/_/g, ' ')}</span>}
+                        </span>
+                      </div>
+                      {d.location && <p className="text-secondary" style={{ fontSize: '0.8125rem' }}>Location: {d.location}</p>}
+                      {d.probable_cause && <p style={{ fontSize: '0.875rem', marginTop: '0.25rem' }}><span className="text-secondary">Cause:</span> {d.probable_cause}</p>}
+                      {d.corrective_action && <p style={{ fontSize: '0.875rem', marginTop: '0.25rem' }}><span className="text-secondary">Fix:</span> {d.corrective_action}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* No defects detected */}
+            {imageUsable && realDefects.length === 0 && defects.length > 0 && (
+              <div className="card">
+                <div className="row-between">
+                  <span style={{ fontWeight: 600 }}>No surface defects detected</span>
+                  <span className="badge badge-green">clean</span>
+                </div>
+              </div>
+            )}
+
+            {/* Parameter Adjustments */}
+            {hasParamAdjustments && (
+              <div className="card">
+                <h3 style={{ marginBottom: '0.75rem' }}>Parameter Adjustments</h3>
+                <div className="stack-sm">
+                  {params.amperage && (
+                    <div className="row-between">
+                      <span className="text-secondary">Amperage</span>
+                      <span style={{ textAlign: 'right', maxWidth: '70%' }}>{params.amperage}</span>
+                    </div>
+                  )}
+                  {params.voltage && (
+                    <div className="row-between">
+                      <span className="text-secondary">Voltage</span>
+                      <span style={{ textAlign: 'right', maxWidth: '70%' }}>{params.voltage}</span>
+                    </div>
+                  )}
+                  {params.travel_speed && (
+                    <div className="row-between">
+                      <span className="text-secondary">Travel Speed</span>
+                      <span style={{ textAlign: 'right', maxWidth: '70%' }}>{params.travel_speed}</span>
+                    </div>
+                  )}
+                  {params.wire_feed_speed && (
+                    <div className="row-between">
+                      <span className="text-secondary">Wire Feed Speed</span>
+                      <span style={{ textAlign: 'right', maxWidth: '70%' }}>{params.wire_feed_speed}</span>
+                    </div>
+                  )}
+                  {params.preheat && (
+                    <div className="row-between">
+                      <span className="text-secondary">Preheat</span>
+                      <span style={{ textAlign: 'right', maxWidth: '70%' }}>{params.preheat}</span>
+                    </div>
+                  )}
+                  {params.technique && (
+                    <div className="row-between">
+                      <span className="text-secondary">Technique</span>
+                      <span style={{ textAlign: 'right', maxWidth: '70%' }}>{params.technique}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Code References */}
+            {Array.isArray(result.code_references) && result.code_references.length > 0 && (
+              <div className="card">
+                <h3 style={{ marginBottom: '0.75rem' }}>Code References</h3>
+                <div className="stack-sm">
+                  {result.code_references.map((s, i) => (
+                    <div key={i} style={{ fontSize: '0.875rem' }}>
+                      <strong>{s.standard}</strong>
+                      {s.clause && <span className="text-secondary"> · {s.clause}</span>}
+                      {s.requirement && <p className="text-secondary" style={{ marginTop: '0.125rem' }}>{s.requirement}</p>}
+                      {s.applies_to && <p className="text-muted" style={{ fontSize: '0.75rem' }}>Applies to: {s.applies_to}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Recommended Next Steps */}
+            {result.recommended_next_steps && (
+              <div className="card">
+                <h3 style={{ marginBottom: '0.5rem' }}>Next Steps</h3>
+                <p>{result.recommended_next_steps}</p>
+              </div>
+            )}
+
+            {/* Confidence */}
+            {result.confidence && (
+              <div className="card">
+                <div className="row-between">
+                  <span className="text-secondary">Confidence</span>
+                  <span className={confidenceBadgeClass(result.confidence)}>{result.confidence}</span>
+                </div>
+                {result.confidence_reasoning && (
+                  <p className="text-secondary" style={{ fontSize: '0.8125rem', marginTop: '0.5rem' }}>{result.confidence_reasoning}</p>
+                )}
+              </div>
+            )}
+
+            {/* Scope Disclaimer */}
+            <div className="scope-disclaimer">
+              {result.scope_disclaimer || 'Visual surface analysis only. Subsurface defects require NDT.'}
             </div>
-          )}
 
-          {result.recommended_parameter_adjustments && (
-            <div className="card">
-              <h3 style={{ marginBottom: '0.5rem' }}>Parameter adjustments</h3>
-              <p className="text-secondary">{result.recommended_parameter_adjustments}</p>
-            </div>
-          )}
-
-          {result.code_reference && (
-            <div className="info-box">
-              <strong>Code reference:</strong> {result.code_reference}
-            </div>
-          )}
-
-          {result.image_quality_note && (
-            <div className="warning-box">
-              <strong>Image quality:</strong> {result.image_quality_note}
-            </div>
-          )}
-
-          {result.confidence && (
-            <p className="text-secondary" style={{ fontSize: '0.875rem' }}>
-              Confidence: <strong>{result.confidence}</strong>
-              {result.confidence_reason && ` — ${result.confidence_reason}`}
-            </p>
-          )}
-
-          <div className="scope-disclaimer">
-            {result.scope_disclaimer || 'Visual surface analysis only. Subsurface defects require NDT.'}
+            <button className="btn btn-primary btn-block" onClick={reset}>Start new analysis</button>
           </div>
-
-          <button className="btn btn-primary btn-block" onClick={reset}>Start new analysis</button>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
