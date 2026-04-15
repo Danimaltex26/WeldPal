@@ -64,6 +64,7 @@ export default function useOfflineQueue() {
           if (item.weld_process) formData.append('weld_process', item.weld_process);
           if (item.base_material) formData.append('base_material', item.base_material);
           if (item.code_standard) formData.append('code_standard', item.code_standard);
+          formData.append('queued', 'true');
 
           const data = await apiUpload('/weld/analyze', formData);
 
