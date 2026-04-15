@@ -93,7 +93,9 @@ export default function TabLayout() {
 
   useEffect(() => {
     apiGet('/profile').then(function (data) {
-      setIsPro(data.subscription_tier === 'pro');
+      // /api/profile returns { profile: { subscription_tier, ... } }
+      var tier = (data && data.profile && data.profile.subscription_tier) || data.subscription_tier;
+      setIsPro(tier === 'pro');
     }).catch(function () {});
   }, []);
 
