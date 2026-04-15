@@ -145,64 +145,157 @@ export default function TroubleshootPage() {
 
       {result && !loading && (
         <div className="stack">
+          {/* Safety callout — top priority when present */}
+          {result.safety_callout && (
+            <div className="warning-box">
+              <strong>Safety: </strong>{result.safety_callout}
+            </div>
+          )}
+
+          {/* Plain English Summary */}
           {result.plain_english_summary && (
             <div className="card">
               <h3 style={{ marginBottom: '0.5rem' }}>Diagnosis</h3>
-              {model && <div style={{ fontSize: '0.6875rem', color: '#6B6B73', marginTop: '0.25rem' }}>{model}</div>}
-              <p>{result.plain_english_summary}</p>
+              {model && <div style={{ fontSize: '0.6875rem', color: '#6B6B73', marginBottom: '0.5rem' }}>{model}</div>}
+              <p style={{ fontSize: '1.0625rem', lineHeight: 1.6 }}>{result.plain_english_summary}</p>
             </div>
           )}
 
+          {/* Probable Causes — each with its own fix_path + parameter_adjustments */}
           {Array.isArray(result.probable_causes) && result.probable_causes.length > 0 && (
-            <div className="card">
-              <h3 style={{ marginBottom: '0.75rem' }}>Probable causes</h3>
-              {result.probable_causes.map((c, i) => (
-                <div key={i} style={{ marginBottom: '0.875rem' }}>
-                  <div className="row" style={{ marginBottom: '0.25rem' }}>
-                    <strong>#{c.rank || i + 1}</strong>
-                    <span className={`badge ${c.likelihood === 'high' ? 'badge-red' : c.likelihood === 'medium' ? 'badge-amber' : 'badge-gray'}`}>{c.likelihood}</span>
+            <div className="stack">
+              <h3>Probable causes</h3>
+              {result.probable_causes.map((c, i) => {
+                const rank = c.rank ?? i + 1;
+                const fixSteps = c.fix_path || c.fix_steps || [];
+                const params = c.parameter_adjustments || {};
+                const hasParams = params && Object.values(params).some(Boolean);
+                return (
+                  <div key={i} className="card">
+                    <div className="row" style={{ marginBottom: '0.5rem', gap: '0.5rem', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div className="row" style={{ gap: '0.5rem', alignItems: 'center' }}>
+                        <div style={{
+                          minWidth: 24,
+                          height: 24,
+                          borderRadius: '50%',
+                          background: '#F97316',
+                          color: '#fff',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 700,
+                          fontSize: '0.8125rem',
+                        }}>
+                          {rank}
+                        </div>
+                        <strong style={{ lineHeight: 1.3 }}>{c.cause}</strong>
+                      </div>
+                      {c.likelihood && (
+                        <span className={`badge ${c.likelihood === 'high' ? 'badge-red' : c.likelihood === 'medium' ? 'badge-amber' : 'badge-gray'}`}>
+                          {c.likelihood}
+                        </span>
+                      )}
+                    </div>
+
+                    {c.explanation && (
+                      <p className="text-secondary" style={{ fontSize: '0.875rem', marginBottom: '0.75rem' }}>
+                        {c.explanation}
+                      </p>
+                    )}
+
+                    {c.code_disposition && (
+                      <p style={{ fontSize: '0.8125rem', marginBottom: '0.75rem', padding: '0.5rem 0.75rem', background: 'rgba(249,115,22,0.08)', borderLeft: '3px solid #F97316', borderRadius: 4 }}>
+                        <strong>Code disposition: </strong>{c.code_disposition}
+                      </p>
+                    )}
+
+                    {hasParams && (
+                      <div style={{ marginBottom: fixSteps.length > 0 ? '0.75rem' : 0 }}>
+                        <p className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.375rem' }}>
+                          Parameter Adjustments
+                        </p>
+                        <div style={{ fontSize: '0.875rem' }}>
+                          {Object.entries(params).map(([k, v]) => (
+                            v ? (
+                              <p key={k} style={{ marginBottom: '0.25rem' }}>
+                                <strong style={{ textTransform: 'capitalize' }}>{k.replace(/_/g, ' ')}:</strong> {v}
+                              </p>
+                            ) : null
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {fixSteps.length > 0 && (
+                      <div style={{ paddingLeft: '0.5rem', borderLeft: '2px solid #2A2A2E' }}>
+                        <p className="text-secondary" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.5rem' }}>
+                          Fix Path
+                        </p>
+                        <div className="stack-sm">
+                          {fixSteps.map((step, si) => (
+                            <div key={si} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                              <span style={{ fontWeight: 600, color: '#F97316', minWidth: 18, fontSize: '0.875rem' }}>
+                                {step.step ?? si + 1}.
+                              </span>
+                              <div style={{ flex: 1 }}>
+                                <p style={{ fontSize: '0.9375rem' }}>{step.action || step.instruction || step}</p>
+                                {step.tip && (
+                                  <p className="text-secondary" style={{ fontSize: '0.8125rem', marginTop: '0.25rem', fontStyle: 'italic' }}>
+                                    Tip: {step.tip}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <p style={{ fontWeight: 600 }}>{c.cause}</p>
-                  {c.explanation && <p className="text-secondary" style={{ fontSize: '0.875rem' }}>{c.explanation}</p>}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
-          {Array.isArray(result.step_by_step_fix) && result.step_by_step_fix.length > 0 && (
-            <div className="card">
-              <h3 style={{ marginBottom: '0.75rem' }}>Step-by-step fix</h3>
-              {result.step_by_step_fix.map((s, i) => (
-                <div key={i} style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.875rem' }}>
-                  <div style={{ minWidth: 28, height: 28, borderRadius: '50%', background: '#F97316', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.875rem' }}>{s.step || i + 1}</div>
-                  <div style={{ flex: 1 }}>
-                    <p>{s.action}</p>
-                    {s.tip && <p className="text-secondary" style={{ fontSize: '0.8125rem', marginTop: '0.25rem' }}>Tip: {s.tip}</p>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {result.parameter_adjustments && Object.values(result.parameter_adjustments).some(Boolean) && (
-            <div className="card">
-              <h3 style={{ marginBottom: '0.75rem' }}>Parameter adjustments</h3>
-              {Object.entries(result.parameter_adjustments).map(([k, v]) => (
-                v ? <p key={k} style={{ fontSize: '0.9375rem' }}><strong>{k.replace(/_/g, ' ')}:</strong> {v}</p> : null
-              ))}
-            </div>
-          )}
-
+          {/* Escalate Warning */}
           {result.escalate_if && (
             <div className="warning-box">
-              <strong>Escalate if:</strong> {result.escalate_if}
+              <strong>Escalate if: </strong>{result.escalate_if}
             </div>
           )}
 
-          {result.estimated_fix_time && (
-            <p className="text-secondary" style={{ fontSize: '0.875rem' }}>
-              Estimated fix time: <strong>{result.estimated_fix_time}</strong>
-            </p>
+          {/* Estimated Fix Time + AWS/code reference */}
+          {(result.estimated_fix_time || result.aws_or_code_reference) && (
+            <div className="card">
+              {result.estimated_fix_time && (
+                <p style={{ fontSize: '0.9375rem', marginBottom: result.aws_or_code_reference ? '0.5rem' : 0 }}>
+                  <span className="text-secondary">Estimated fix time: </span>
+                  <strong>{result.estimated_fix_time}</strong>
+                </p>
+              )}
+              {result.aws_or_code_reference && (
+                <p style={{ fontSize: '0.9375rem' }}>
+                  <span className="text-secondary">Code reference: </span>
+                  <strong>{result.aws_or_code_reference}</strong>
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Confidence */}
+          {result.confidence && (
+            <div className="card">
+              <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="text-secondary">Confidence</span>
+                <span className={`badge ${result.confidence === 'high' ? 'badge-green' : result.confidence === 'medium' ? 'badge-amber' : 'badge-red'}`}>
+                  {result.confidence}
+                </span>
+              </div>
+              {result.confidence_reasoning && (
+                <p className="text-secondary" style={{ fontSize: '0.8125rem', marginTop: '0.5rem' }}>
+                  {result.confidence_reasoning}
+                </p>
+              )}
+            </div>
           )}
 
           <div className="form-group">
