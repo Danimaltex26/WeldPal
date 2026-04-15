@@ -77,7 +77,7 @@ export async function analyzeWeldPhoto(params) {
     userNotes
   });
 
-  // MODEL: claude-sonnet-4-6
+  // MODEL: claude-sonnet-4-20250514
   // Photo diagnosis always uses Sonnet — vision quality matters here.
   // Haiku is NOT acceptable for photo analysis — see model router strategy.
   // temperature: 0.2 — low for consistent, precise diagnosis
@@ -92,7 +92,7 @@ export async function analyzeWeldPhoto(params) {
       attempt++;
 
       response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-6',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 1500,
         temperature: 0.2,
         system: WELDPAL_SYSTEM_PROMPT,
