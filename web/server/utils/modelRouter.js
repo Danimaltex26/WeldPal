@@ -46,21 +46,49 @@ const SAFETY_KEYWORDS = [
   'fall', 'crush', 'entrap', 'interlock', 'governor',
 ];
 
+/**
+ * Determines complexity of a WeldPal troubleshoot request.
+ * Routes to complex_troubleshoot (Sonnet) when any signal indicates
+ * the problem requires advanced metallurgical or code knowledge.
+ *
+ * Signals that escalate to Sonnet:
+ *   - Multi-turn conversation (follow-up message)
+ *   - Code standard selected (citation accuracy required)
+ *   - Specialty base material (alloy-specific diagnosis)
+ *   - Weld parameters provided (quantitative diagnosis)
+ *   - Difficult position (vertical/overhead — position-specific physics)
+ *   - Safety-critical symptom keywords (cracks, structural failure)
+ */
 function classifyTroubleshoot(params) {
-  var {
+  const {
     conversationHistory = [],
     symptom = '',
     requiresCodeCompliance = false,
     isSpecialtyMaterial = false,
+    hasWeldParameters = false,
+    isDifficultPosition = false,
   } = params;
 
-  var symptomLower = symptom.toLowerCase();
-  var isSafetyCritical = SAFETY_KEYWORDS.some(function (kw) {
-    return symptomLower.includes(kw);
-  });
-  var isMultiTurn = conversationHistory.length > 0;
-  var isComplex = isMultiTurn || requiresCodeCompliance ||
-                  isSpecialtyMaterial || isSafetyCritical;
+  const safetyCriticalKeywords = [
+    'crack', 'fracture', 'break', 'fail', 'collapse',
+    'structural', 'hydrogen', 'brittle', 'lamellar',
+    'pressure vessel', 'pipeline', 'radiograph', 'x-ray',
+  ];
+
+  const isSafetyCritical = safetyCriticalKeywords.some(
+    kw => symptom.toLowerCase().includes(kw)
+  );
+
+  const isMultiTurn = conversationHistory.length > 0;
+
+  const isComplex = (
+    isMultiTurn          ||  // follow-up = context-dependent reasoning
+    requiresCodeCompliance || // code standard = citation accuracy
+    isSpecialtyMaterial  ||  // specialty material = alloy knowledge
+    hasWeldParameters    ||  // parameters provided = quantitative diagnosis
+    isDifficultPosition  ||  // vertical/overhead = position physics
+    isSafetyCritical         // crack/structural = no shortcuts
+  );
 
   return isComplex ? 'complex_troubleshoot' : 'simple_troubleshoot';
 }

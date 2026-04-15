@@ -62,25 +62,47 @@ router.post("/", auth, async (req, res) => {
       existingHistory = data.conversation_json || [];
     }
 
+    // Follow-ups need the JSON reminder appended — otherwise the model
+    // drifts into conversational prose and the response won't parse.
     const userMessage = session_id && follow_up
-      ? follow_up
-      : [
-          `Welding process: ${weld_process || "not specified"}`,
-          `Base material: ${base_material || "not specified"}`,
-          `Filler metal: ${filler_metal || "not specified"}`,
-          `Joint position: ${position || "not specified"}`,
-          `Symptom: ${symptom || "not specified"}`,
-          `Environment: ${environment || "not specified"}`,
-          `Already tried: ${already_tried.length ? already_tried.join(", ") : "nothing yet"}`,
-          `Current parameters: ${current_parameters || "not specified"}`,
-        ].join("\n");
+      ? `${follow_up}\n\nRespond with a JSON object exactly matching the schema in your instructions. No prose before or after, no markdown code fences.`
+      : buildTroubleshootMessage(req.body);
 
     const messages = [...existingHistory, { role: "user", content: userMessage }];
 
-    // CLAUDE API CALL — text-only troubleshoot diagnosis
-    var aiResult = await callClaude({
+    // CLAUDE API CALL: WeldPal troubleshoot diagnosis
+    // Model routing: simple symptoms → Haiku, complex → Sonnet
+    // Complexity signals passed via context — see utils/modelRouter.js
+    const troubleshootContext = {
+      // Prior conversation turns — multi-turn escalates to Sonnet
+      conversationHistory: existingHistory,
+
+      // Primary symptom text for safety keyword detection
+      symptom: req.body.symptom || '',
+
+      // Code standard selected = citation accuracy needed = Sonnet
+      requiresCodeCompliance: !!(req.body.code_standard &&
+        req.body.code_standard !== 'Unknown'),
+
+      // Specialty materials require advanced metallurgical knowledge
+      isSpecialtyMaterial: ['stainless', 'aluminum', 'alloy steel',
+        'chrome-moly', 'hsla', 'duplex', 'inconel', 'p91'].some(
+        m => (req.body.base_material || '').toLowerCase().includes(m)
+      ),
+
+      // Parameters provided = quantitative diagnosis = Sonnet
+      hasWeldParameters: !!(req.body.current_parameters &&
+        String(req.body.current_parameters).trim()),
+
+      // Overhead or vertical = position-specific diagnosis = Sonnet
+      isDifficultPosition: ['vertical', 'overhead'].includes(
+        (req.body.position || '').toLowerCase()
+      ),
+    };
+
+    const aiResult = await callClaude({
       feature: 'troubleshoot',
-      context: { conversationHistory: existingHistory, symptom: req.body.symptom || '' },
+      context: troubleshootContext,
       systemPrompt: TROUBLESHOOT_SYSTEM_PROMPT,
       messages,
     });
@@ -135,5 +157,43 @@ router.post("/", auth, async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// Builds the user message from form fields.
+// Maps the camelCase field names in the spec to the snake_case fields
+// the frontend actually sends; gracefully handles fields the current UI
+// does not yet expose (code_standard, joint_type, material_thickness, etc.)
+function buildTroubleshootMessage(body) {
+  const lines = [];
+
+  if (body.weld_process) lines.push(`Welding process: ${body.weld_process}`);
+  if (body.base_material) lines.push(`Base material: ${body.base_material}`);
+  if (body.code_standard && body.code_standard !== 'Unknown') {
+    lines.push(`Applicable code standard: ${body.code_standard}`);
+  }
+  if (body.filler_metal && String(body.filler_metal).trim()) {
+    lines.push(`Electrode / wire: ${String(body.filler_metal).trim()}`);
+  }
+  if (body.joint_type) lines.push(`Joint type: ${body.joint_type}`);
+  if (body.position) lines.push(`Weld position: ${body.position}`);
+  if (body.material_thickness && String(body.material_thickness).trim()) {
+    lines.push(`Material thickness: ${String(body.material_thickness).trim()}`);
+  }
+  if (body.current_parameters && String(body.current_parameters).trim()) {
+    lines.push(`Current parameters: ${String(body.current_parameters).trim()}`);
+  }
+  if (body.environment) lines.push(`Environment: ${body.environment}`);
+  if (body.already_tried && body.already_tried.length > 0) {
+    lines.push(`Already tried: ${body.already_tried.join(', ')}`);
+  }
+  if (body.symptom && String(body.symptom).trim()) {
+    lines.push(`Welder description: ${String(body.symptom).trim()}`);
+  }
+
+  const contextBlock = lines.length > 0
+    ? lines.join('\n')
+    : 'No additional context provided.';
+
+  return `${contextBlock}\n\nDiagnose this weld problem and return your complete assessment as a JSON object exactly matching the schema in your instructions.`;
+}
 
 export default router;
