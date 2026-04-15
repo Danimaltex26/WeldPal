@@ -111,6 +111,16 @@ export async function analyzeWeldPhoto(params) {
         continue;
       }
 
+      console.error('[WeldPal Analyzer] Anthropic API error:', {
+        name: apiError.name,
+        status: apiError.status,
+        message: apiError.message,
+        cause: apiError.cause?.message || apiError.cause,
+        error: apiError.error,
+        body: apiError.response?.data || apiError.body,
+        stringified: String(apiError)
+      });
+
       // Not retryable or last attempt — throw structured error
       throw {
         type: 'api_error',
