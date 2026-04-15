@@ -3,9 +3,8 @@ import { Router } from "express";
 import multer from "multer";
 import { createClient } from "@supabase/supabase-js";
 import auth from "../middleware/auth.js";
-import { WELD_ANALYSIS_SYSTEM_PROMPT } from "../prompts/weld.js";
 import { sendAnalysisReadyEmail } from "../utils/email.js";
-import { callClaude } from "../utils/claudeClient.js";
+import { analyzeWeldPhoto } from "../utils/weldAnalyzer.js";
 
 const router = Router();
 const upload = multer({
@@ -51,8 +50,7 @@ router.post("/analyze", auth, upload.array("images", 4), async (req, res) => {
       return res.status(400).json({ error: "At least one image is required" });
     }
 
-    // Upload images to Supabase Storage and build Claude vision content blocks
-    const imageContent = [];
+    // Upload images to Supabase Storage
     const publicUrls = [];
     for (const file of req.files) {
       const timestamp = Date.now();
@@ -71,45 +69,30 @@ router.post("/analyze", auth, upload.array("images", 4), async (req, res) => {
       }
       const { data: urlData } = supabaseService.storage.from("weldpal-uploads").getPublicUrl(storagePath);
       publicUrls.push(urlData.publicUrl);
-
-      imageContent.push({
-        type: "image",
-        source: {
-          type: "base64",
-          media_type: file.mimetype || "image/jpeg",
-          data: file.buffer.toString("base64"),
-        },
-      });
     }
 
-    // Append text instruction with user-provided context
-    imageContent.push({
-      type: "text",
-      text: [
-        "Analyze this weld photo and return your assessment as the specified JSON object.",
-        `Welding process: ${weld_process || "not specified"}`,
-        `Base material: ${base_material || "not specified"}`,
-        `Applicable code: ${code_standard || "not specified"}`,
-      ].join("\n"),
-    });
-
-    // CLAUDE API CALL — vision analysis of weld photo
-    var aiResult = await callClaude({
-      feature: 'photo_diagnosis',
-      systemPrompt: WELD_ANALYSIS_SYSTEM_PROMPT,
-      messages: [{ role: "user", content: imageContent }],
-    });
-
-    const rawText = aiResult.content;
-    let result;
+    // CLAUDE API CALL: weld photo analysis — see /server/utils/weldAnalyzer.js
+    let analysisResult;
     try {
-      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No JSON found");
-      result = JSON.parse(jsonMatch[0]);
-    } catch (parseErr) {
-      console.error("Parse error:", rawText);
-      return res.status(500).json({ error: "Failed to parse analysis result", raw: rawText });
+      analysisResult = await analyzeWeldPhoto({
+        imageBase64: req.files[0].buffer.toString("base64"),
+        imageMediaType: req.files[0].mimetype || "image/jpeg",
+        weldProcess: weld_process,
+        baseMaterial: base_material,
+        codeStandard: code_standard,
+        userNotes: req.body.user_notes,
+        userId,
+      });
+    } catch (error) {
+      if (error.type === 'api_error' || error.type === 'parse_error' || error.type === 'validation_error') {
+        return res.status(error.status || 500).json({
+          error: error.userMessage || 'Analysis failed. Please try again.'
+        });
+      }
+      throw error; // Re-throw unexpected errors to global error handler
     }
+
+    const { analysis: result, usage } = analysisResult;
 
     // Persist to weld_analyses
     const { data: saved, error: saveError } = await supabaseService
@@ -120,9 +103,9 @@ router.post("/analyze", auth, upload.array("images", 4), async (req, res) => {
         weld_process,
         base_material,
         code_standard,
-        defects_identified: result.defects_identified || [],
+        defects_identified: result.defects || [],
         overall_assessment: result.overall_assessment,
-        code_reference: result.code_reference,
+        code_reference: result.code_references || [],
         confidence: result.confidence,
         full_response_json: result,
         saved: false,
@@ -133,7 +116,7 @@ router.post("/analyze", auth, upload.array("images", 4), async (req, res) => {
 
     if (saveError) {
       console.error("Save error:", saveError);
-      return res.json({ result, saved: false, save_error: saveError.message, model: aiResult.model });
+      return res.json({ result, saved: false, save_error: saveError.message, model: analysisResult.model });
     }
 
     // Only send email for offline-queued analyses
@@ -146,7 +129,7 @@ router.post("/analyze", auth, upload.array("images", 4), async (req, res) => {
       }).catch((err) => console.error("Email notification error:", err));
     }
 
-    return res.json({ result, record_id: saved.id, model: aiResult.model });
+    return res.json({ result, record_id: saved.id, model: analysisResult.model });
   } catch (err) {
     console.error("Weld analyze error:", err);
     return res.status(500).json({ error: "Internal server error" });
