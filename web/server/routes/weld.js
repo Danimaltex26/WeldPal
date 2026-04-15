@@ -136,13 +136,15 @@ router.post("/analyze", auth, upload.array("images", 4), async (req, res) => {
       return res.json({ result, saved: false, save_error: saveError.message, model: aiResult.model });
     }
 
-    // Send email notification (fire-and-forget, don't block response)
-    sendAnalysisReadyEmail({
-      to: req.user.email,
-      appKey: "weldpal",
-      displayName: req.profile?.display_name || req.user.email,
-      analysisType: weld_process || "weld",
-    }).catch((err) => console.error("Email notification error:", err));
+    // Only send email for offline-queued analyses
+    if (req.body.queued) {
+      sendAnalysisReadyEmail({
+        to: req.user.email,
+        appKey: "weldpal",
+        displayName: req.profile?.display_name || req.user.email,
+        analysisType: weld_process || "weld",
+      }).catch((err) => console.error("Email notification error:", err));
+    }
 
     return res.json({ result, record_id: saved.id, model: aiResult.model });
   } catch (err) {
