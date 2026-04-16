@@ -331,7 +331,7 @@ export default function ExamEngine() {
         answers={answers}
         flagged={flagged}
         onJump={(i) => { setCurrent(i); setShowReview(false); }}
-        onSubmit={() => setShowConfirm(true)}
+        onSubmit={() => { setShowReview(false); setShowConfirm(true); }}
       />
     );
   }
@@ -351,7 +351,7 @@ export default function ExamEngine() {
           <p className="text-secondary" style={{ marginBottom: '1.5rem' }}>This cannot be undone.</p>
           <div className="stack-sm">
             <button className="btn btn-primary btn-block" onClick={submitExam}>Yes, Submit</button>
-            <button className="btn btn-secondary btn-block" onClick={() => setShowConfirm(false)}>Go Back</button>
+            <button className="btn btn-secondary btn-block" onClick={() => { setShowConfirm(false); setShowReview(true); }}>Go Back</button>
           </div>
         </div>
       </div>
