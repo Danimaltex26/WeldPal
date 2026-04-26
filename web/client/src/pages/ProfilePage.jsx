@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { apiGet, apiPatch } from '../utils/api';
+import { apiGet, apiPatch, apiPost } from '../utils/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const PROCESS_OPTIONS = ['MIG/GMAW', 'TIG/GTAW', 'Stick/SMAW', 'Flux-Core/FCAW', 'Submerged Arc/SAW'];
@@ -10,6 +10,7 @@ const SPECIALTIES = ['Structural', 'Pipeline', 'Pressure Vessel', 'Manufacturing
 
 export default function ProfilePage() {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -22,6 +23,11 @@ export default function ProfilePage() {
   const [newProcess, setNewProcess] = useState('');
   const [newCert, setNewCert] = useState('');
   const [newSpecialty, setNewSpecialty] = useState('');
+
+  // Team creation
+  const [showCreateTeam, setShowCreateTeam] = useState(false);
+  const [teamNameDraft, setTeamNameDraft] = useState('');
+  const [creatingTeam, setCreatingTeam] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -107,6 +113,20 @@ export default function ProfilePage() {
   async function removeCertification(c) {
     const updated = (profile.certifications || []).filter((x) => x !== c);
     await patchProfile({ certifications: updated });
+  }
+
+  async function handleCreateTeam() {
+    if (!teamNameDraft.trim()) return;
+    setCreatingTeam(true);
+    try {
+      await apiPost('/teams/create', { teamName: teamNameDraft.trim() });
+      await loadProfile();
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.message || 'Failed to create team');
+    } finally {
+      setCreatingTeam(false);
+    }
   }
 
   async function handleSignOut() {
@@ -397,6 +417,78 @@ export default function ProfilePage() {
             </button>
           </div>
         </div>
+
+        {/* Team */}
+        {profile?.team_id ? (
+          <div className="card">
+            <div className="row-between" style={{ alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0 }}>Team</h3>
+                <p className="text-secondary" style={{ fontSize: '0.875rem', marginTop: '0.25rem' }}>
+                  {profile.team_name || 'Your Team'}
+                </p>
+              </div>
+              <span className={`badge ${profile.role === 'manager' ? 'badge-orange' : 'badge-blue'}`}>
+                {profile.role === 'manager' ? 'Manager' : 'Member'}
+              </span>
+            </div>
+            {profile.role === 'manager' && (
+              <button
+                className="btn btn-secondary btn-block"
+                onClick={() => navigate('/dashboard')}
+                style={{ marginTop: '0.75rem' }}
+              >
+                Team Dashboard
+              </button>
+            )}
+          </div>
+        ) : (!profile?.team_id && profile?.role !== 'manager') && (
+          <div className="card">
+            <h3 style={{ marginBottom: '0.5rem' }}>Create a Team</h3>
+            <p className="text-secondary" style={{ fontSize: '0.8125rem', marginBottom: '0.75rem' }}>
+              Manage your crew's training, track certifications, and provide Pro access. Includes 5 seats.
+            </p>
+            {showCreateTeam ? (
+              <div className="row" style={{ gap: '0.5rem' }}>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="Team name"
+                  value={teamNameDraft}
+                  onChange={(e) => setTeamNameDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleCreateTeam();
+                    if (e.key === 'Escape') setShowCreateTeam(false);
+                  }}
+                  autoFocus
+                  style={{ flex: 1 }}
+                />
+                <button
+                  className="btn btn-primary"
+                  onClick={handleCreateTeam}
+                  disabled={creatingTeam || !teamNameDraft.trim()}
+                  style={{ flexShrink: 0 }}
+                >
+                  {creatingTeam ? 'Creating...' : 'Create'}
+                </button>
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => setShowCreateTeam(false)}
+                  style={{ flexShrink: 0 }}
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                className="btn btn-secondary btn-block"
+                onClick={() => setShowCreateTeam(true)}
+              >
+                Create Team
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Upgrade to Pro */}
         {isFree && (

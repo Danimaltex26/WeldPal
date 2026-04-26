@@ -69,6 +69,91 @@ function buildAnalysisReadyEmail({ appKey, displayName, analysisType }) {
 </html>`;
 }
 
+// ── Team invite email ─────────────────────────────────────────────────────────
+
+function buildTeamInviteEmail({ inviterName, teamName, inviteCode }) {
+  const joinUrl = `https://weldpal.tradepals.net/join?code=${inviteCode}`;
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>You've been invited to join ${teamName}</title>
+</head>
+<body style="margin:0;padding:0;background:#0f0f10;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#e5e5e7;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0f0f10;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;background:#17171a;border:1px solid #2a2a2e;border-radius:12px;overflow:hidden;">
+          <tr>
+            <td style="padding:32px 32px 0;">
+              <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#ffffff;text-align:center;">You're invited</h1>
+              <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#a0a0a8;text-align:center;">
+                <strong style="color:#ffffff;">${inviterName}</strong> has invited you to join <strong style="color:#ffffff;">${teamName}</strong> on WeldPal. Joining gives you full Pro access, paid for by your team.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:0 32px 24px;">
+              <a href="${joinUrl}" style="display:inline-block;background:#F97316;color:#ffffff;font-weight:700;font-size:15px;text-decoration:none;padding:14px 32px;border-radius:8px;">Join Team</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 32px 24px;">
+              <p style="margin:0;font-size:13px;color:#6b6b73;text-align:center;">
+                Or use invite code: <strong style="color:#a0a0a8;">${inviteCode}</strong>
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 32px 24px;border-top:1px solid #2a2a2e;">
+              <p style="margin:0;font-size:12px;color:#6b6b73;text-align:center;line-height:1.6;">
+                This invite expires in 7 days.<br>
+                WeldPal is a TradePals, LLC product &middot; <a href="https://tradepals.net" style="color:#6b6b73;text-decoration:underline;">tradepals.net</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+export async function sendTeamInviteEmail({ to, inviterName, teamName, inviteCode }) {
+  if (!RESEND_API_KEY) {
+    console.warn("RESEND_API_KEY not set — skipping invite email");
+    return;
+  }
+
+  const html = buildTeamInviteEmail({ inviterName, teamName, inviteCode });
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+      },
+      body: JSON.stringify({
+        from: `${FROM_NAME} <${FROM_EMAIL}>`,
+        to: [to],
+        subject: `You've been invited to join ${teamName} on WeldPal`,
+        html,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      console.error("Resend invite email error:", res.status, err);
+    }
+  } catch (err) {
+    console.error("Invite email send failed:", err.message);
+  }
+}
+
 export async function sendAnalysisReadyEmail({ to, appKey, displayName, analysisType }) {
   if (!RESEND_API_KEY) {
     console.warn("RESEND_API_KEY not set — skipping email notification");

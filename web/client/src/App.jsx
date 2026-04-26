@@ -5,12 +5,16 @@ import TabLayout from './components/TabLayout';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Onboarding from './pages/Onboarding';
+import JoinTeam from './pages/JoinTeam';
 import WeldPage from './pages/WeldPage';
 import TroubleshootPage from './pages/TroubleshootPage';
 import ReferencePage from './pages/ReferencePage';
 import ProfilePage from './pages/ProfilePage';
 import HistoryPage from './pages/HistoryPage';
 import LearnPage from './pages/LearnPage';
+import ManagerDashboard from './pages/ManagerDashboard';
+import MemberDetail from './pages/MemberDetail';
+import TeamSettings from './pages/TeamSettings';
 import TrainingHome from './pages/training/TrainingHome';
 import ModuleList from './pages/training/ModuleList';
 import ModuleContent from './pages/training/ModuleContent';
@@ -26,6 +30,7 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/join" element={<JoinTeam />} />
         <Route
           path="/onboarding"
           element={
@@ -48,6 +53,9 @@ export default function App() {
           <Route path="reference" element={<ReferencePage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="history" element={<HistoryPage />} />
+          <Route path="dashboard" element={<ManagerDashboard />} />
+          <Route path="dashboard/member/:userId" element={<MemberDetail />} />
+          <Route path="dashboard/settings" element={<TeamSettings />} />
           <Route path="learn" element={<LearnPage />} />
           <Route path="training" element={<TrainingHome />} />
           <Route path="training/sr" element={<SpacedRepetitionQueue />} />
