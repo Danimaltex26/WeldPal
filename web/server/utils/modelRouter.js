@@ -67,12 +67,17 @@ function classifyTroubleshoot(params) {
     isSpecialtyMaterial = false,
     hasWeldParameters = false,
     isDifficultPosition = false,
+    isPipingOrPressureCode = false,
   } = params;
 
   const safetyCriticalKeywords = [
     'crack', 'fracture', 'break', 'fail', 'collapse',
     'structural', 'hydrogen', 'brittle', 'lamellar',
     'pressure vessel', 'pipeline', 'radiograph', 'x-ray',
+    'b31', 'process piping', 'power piping', 'pwht',
+    'gas transmission', 'high consequence', 'class location',
+    'tank', 'api 650', 'api 653', 'underwater', 'subsea',
+    'aerospace', 'seismic', 'bridge', 'offshore',
   ];
 
   const isSafetyCritical = safetyCriticalKeywords.some(
@@ -82,23 +87,47 @@ function classifyTroubleshoot(params) {
   const isMultiTurn = conversationHistory.length > 0;
 
   const isComplex = (
-    isMultiTurn          ||  // follow-up = context-dependent reasoning
-    requiresCodeCompliance || // code standard = citation accuracy
-    isSpecialtyMaterial  ||  // specialty material = alloy knowledge
-    hasWeldParameters    ||  // parameters provided = quantitative diagnosis
-    isDifficultPosition  ||  // vertical/overhead = position physics
-    isSafetyCritical         // crack/structural = no shortcuts
+    isMultiTurn            ||  // follow-up = context-dependent reasoning
+    requiresCodeCompliance ||  // code standard = citation accuracy
+    isSpecialtyMaterial    ||  // specialty material = alloy knowledge
+    hasWeldParameters      ||  // parameters provided = quantitative diagnosis
+    isDifficultPosition    ||  // vertical/overhead = position physics
+    isSafetyCritical       ||  // crack/structural = no shortcuts
+    isPipingOrPressureCode     // B31/pressure/tank codes = advanced code knowledge
   );
 
   return isComplex ? 'complex_troubleshoot' : 'simple_troubleshoot';
 }
 
 const CITATION_KEYWORDS = [
+  // General code compliance language
   'acceptance criteria', 'reject', 'accept', 'maximum', 'minimum',
   'per code', 'code require', 'what does', 'compliant', 'violation',
   'allowed', 'permitted', 'prohibited', 'shall', 'must', 'required',
-  'wps', 'procedure', 'specification', 'nec article', 'asme',
-  'aws d1', 'api 1104', 'ipc', 'upc', 'nfpa', 'a17.1', 'iec',
+  'wps', 'procedure', 'specification', 'qualification',
+  // AWS codes
+  'aws d1', 'aws d3', 'aws d9', 'aws d10', 'aws d14', 'aws d17',
+  'aws b2', 'aws b4',
+  // ASME codes
+  'asme', 'section ix', 'section viii', 'section v', 'section i',
+  'section ii', 'p-number', 'p number',
+  // ASME B31 piping series
+  'b31', 'b31.1', 'b31.3', 'b31.4', 'b31.8', 'b31.9', 'b31.12',
+  'process piping', 'power piping', 'gas transmission',
+  'pwht', 'post weld heat treat', 'postweld heat',
+  'fluid service', 'category d', 'category m',
+  'class location', 'high consequence area', 'hca',
+  'branch connection', 'examination category',
+  // API codes
+  'api 1104', 'api 650', 'api 653', 'api 620', 'api rp 2a',
+  'pipeline qualification', 'tank welding', 'storage tank',
+  // Other standards
+  'awwa', 'water main', 'awwa c206',
+  'iso 3834', 'iso 15614',
+  'mil-std', 'mil std 1595',
+  'nfpa', 'nfpa 51b', 'hot work permit',
+  // General welding standards references
+  'nec article', 'ipc', 'upc', 'a17.1', 'iec',
 ];
 
 export function requiresSpecificClause(query) {

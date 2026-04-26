@@ -86,9 +86,22 @@ router.post("/", auth, async (req, res) => {
 
       // Specialty materials require advanced metallurgical knowledge
       isSpecialtyMaterial: ['stainless', 'aluminum', 'alloy steel',
-        'chrome-moly', 'hsla', 'duplex', 'inconel', 'p91'].some(
+        'chrome-moly', 'hsla', 'duplex', 'inconel', 'p91',
+        'titanium', 'nickel', 'hastelloy', 'monel'].some(
         m => (req.body.base_material || '').toLowerCase().includes(m)
       ),
+
+      // B31 piping codes and pressure/tank codes always require Sonnet
+      isPipingOrPressureCode: !!(req.body.code_standard && (
+        req.body.code_standard.includes('B31') ||
+        req.body.code_standard.includes('Section VIII') ||
+        req.body.code_standard.includes('Section I') ||
+        req.body.code_standard.includes('API 650') ||
+        req.body.code_standard.includes('API 653') ||
+        req.body.code_standard.includes('API 620') ||
+        req.body.code_standard.includes('D3.6') ||
+        req.body.code_standard.includes('D17.1')
+      )),
 
       // Parameters provided = quantitative diagnosis = Sonnet
       hasWeldParameters: !!(req.body.current_parameters &&
