@@ -119,9 +119,14 @@ export default function ProfilePage() {
     if (!teamNameDraft.trim()) return;
     setCreatingTeam(true);
     try {
-      await apiPost('/teams/create', { teamName: teamNameDraft.trim() });
-      await loadProfile();
-      navigate('/dashboard');
+      const res = await apiPost('/teams/create', { teamName: teamNameDraft.trim() });
+      if (res.checkoutUrl) {
+        // Redirect to Stripe Checkout — team activates on successful payment
+        window.location.href = res.checkoutUrl;
+      } else {
+        await loadProfile();
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.message || 'Failed to create team');
     } finally {
@@ -446,7 +451,7 @@ export default function ProfilePage() {
           <div className="card">
             <h3 style={{ marginBottom: '0.5rem' }}>Create a Team</h3>
             <p className="text-secondary" style={{ fontSize: '0.8125rem', marginBottom: '0.75rem' }}>
-              Manage your crew's training, track certifications, and provide Pro access. Includes 5 seats.
+              Team plan: $49.95/month, up to 10 members. Track training, view activity, and provide Pro access.
             </p>
             {showCreateTeam ? (
               <div className="row" style={{ gap: '0.5rem' }}>

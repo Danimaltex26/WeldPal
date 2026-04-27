@@ -194,7 +194,20 @@ export default function TeamSettings() {
             borderRadius: 3,
           }} />
         </div>
-        {/* TODO: connect to billing portal when team billing is ready */}
+        {team.stripe_customer_id && (
+          <button
+            className="btn btn-secondary btn-block"
+            style={{ marginTop: '0.75rem' }}
+            onClick={async () => {
+              try {
+                const res = await apiGet('/teams/billing-portal');
+                window.location.href = res.url;
+              } catch {}
+            }}
+          >
+            Manage Billing
+          </button>
+        )}
       </div>
 
       {/* Active members */}

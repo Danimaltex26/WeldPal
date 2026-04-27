@@ -12,6 +12,7 @@ import historyRoutes from "./routes/history.js";
 import profileRoutes from "./routes/profile.js";
 import trainingRoutes from "./routes/training.js";
 import teamRoutes from "./routes/teams.js";
+import stripeWebhookRoutes from "./routes/stripeWebhook.js";
 
 const app = express();
 
@@ -34,6 +35,9 @@ app.use(
     credentials: true,
   })
 );
+
+// Stripe webhook needs raw body for signature verification — mount before JSON parser
+app.use("/api/webhooks/stripe", express.raw({ type: "application/json" }), stripeWebhookRoutes);
 
 app.use(express.json({ limit: "10mb" }));
 

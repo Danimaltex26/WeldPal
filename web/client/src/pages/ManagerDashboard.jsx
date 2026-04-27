@@ -98,6 +98,35 @@ export default function ManagerDashboard() {
 
       {error && <div className="error-banner">{error}</div>}
 
+      {/* Billing status */}
+      {team.subscription_status === 'pending' && (
+        <div className="warning-box">
+          Payment pending — complete checkout to activate your team.
+        </div>
+      )}
+      {team.subscription_status === 'past_due' && (
+        <div className="warning-box">
+          Payment failed — update your payment method to keep your team active.
+          <button
+            className="btn btn-primary"
+            style={{ marginTop: '0.5rem', fontSize: '0.8125rem' }}
+            onClick={async () => {
+              try {
+                const res = await apiGet('/teams/billing-portal');
+                window.location.href = res.url;
+              } catch {}
+            }}
+          >
+            Update Payment
+          </button>
+        </div>
+      )}
+      {team.subscription_status === 'cancelled' && (
+        <div className="error-banner">
+          Team subscription cancelled. Members no longer have Pro access.
+        </div>
+      )}
+
       {/* Stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
         <div className="card" style={{ textAlign: 'center', padding: '1rem' }}>

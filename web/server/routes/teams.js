@@ -3,12 +3,16 @@
 
 import { Router } from "express";
 import crypto from "crypto";
+import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import auth from "../middleware/auth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { sendTeamInviteEmail } from "../utils/email.js";
 
 const router = Router();
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const TEAM_PRICE_ID = process.env.STRIPE_TEAM_PRICE_ID;
+const APP_URL = process.env.APP_URL || "https://weldpal.tradepals.net";
 
 const supabasePublic = createClient(
   process.env.SUPABASE_URL,
@@ -22,7 +26,8 @@ const supabaseApp = createClient(
 );
 
 // ── POST /api/teams/create ────────────────────────────────────────────────────
-// Create a new team. User must not already be a manager or on a team.
+// Create a new team + Stripe Checkout Session. Team starts as 'pending' until
+// Stripe webhook confirms payment.
 
 router.post("/create", auth, async (req, res) => {
   try {
@@ -43,11 +48,7 @@ router.post("/create", auth, async (req, res) => {
 
     const inviteCode = crypto.randomBytes(4).toString("hex");
 
-    // BILLING STUB: team plan billing not yet connected
-    // TODO: create RevenueCat or Stripe subscription for team
-    // seats_purchased defaults to 5 for all teams in v1
-    // manually upgrade seats_purchased in Supabase for now
-
+    // Create team with 'pending' status — will activate on Stripe payment
     const { data: team, error: teamError } = await supabasePublic
       .from("teams")
       .insert({
@@ -55,6 +56,7 @@ router.post("/create", auth, async (req, res) => {
         team_name: teamName.trim(),
         invite_code: inviteCode,
         seats_used: 1,
+        subscription_status: "pending",
       })
       .select()
       .single();
@@ -72,7 +74,6 @@ router.post("/create", auth, async (req, res) => {
 
     if (profileError) {
       console.error("[Teams] Profile update error:", profileError);
-      // Rollback team creation
       await supabasePublic.from("teams").delete().eq("id", team.id);
       return res.status(500).json({ error: "Failed to update profile" });
     }
@@ -85,9 +86,48 @@ router.post("/create", auth, async (req, res) => {
       status: "active",
     });
 
-    return res.json({ team, inviteCode });
+    // Create Stripe Checkout Session for the team plan
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer_email: profile.email,
+      line_items: [{ price: TEAM_PRICE_ID, quantity: 1 }],
+      metadata: { team_id: team.id, manager_id: userId },
+      success_url: `${APP_URL}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${APP_URL}/profile`,
+    });
+
+    return res.json({ checkoutUrl: session.url, team });
   } catch (err) {
     console.error("[Teams] Create error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── GET /api/teams/billing-portal ─────────────────────────────────────────────
+// Opens Stripe Customer Portal for the manager to update card, view invoices, cancel.
+
+router.get("/billing-portal", auth, requireRole("manager", "admin"), async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const { data: team } = await supabasePublic
+      .from("teams")
+      .select("stripe_customer_id")
+      .eq("manager_id", userId)
+      .single();
+
+    if (!team?.stripe_customer_id) {
+      return res.status(404).json({ error: "No billing account found" });
+    }
+
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: team.stripe_customer_id,
+      return_url: `${APP_URL}/dashboard/settings`,
+    });
+
+    return res.json({ url: portalSession.url });
+  } catch (err) {
+    console.error("[Teams] Billing portal error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -110,10 +150,17 @@ router.post("/invite", auth, requireRole("manager", "admin"), async (req, res) =
       return res.status(404).json({ error: "Team not found" });
     }
 
+    if (team.subscription_status !== "active") {
+      return res.status(403).json({
+        error: "Team subscription is not active",
+        message: "Complete payment to start inviting crew members.",
+      });
+    }
+
     if (team.seats_used >= team.seats_purchased) {
       return res.status(403).json({
         error: "No seats available",
-        message: "Upgrade your plan to add more crew members.",
+        message: "Your team plan supports up to 10 members.",
         seats_purchased: team.seats_purchased,
         seats_used: team.seats_used,
       });
@@ -224,9 +271,8 @@ router.post("/join", auth, async (req, res) => {
       .update({ team_id: team.id })
       .eq("id", userId);
 
-    // BILLING STUB: Pro entitlement granted directly in Supabase
-    // TODO: grant via RevenueCat team entitlement when billing connects
-    // For now: team membership + active team status grants Pro via auth middleware
+    // Pro entitlement is granted via auth middleware checking teams.subscription_status.
+    // Team members get Pro as long as the team subscription is active.
 
     // Increment seats_used
     await supabasePublic
