@@ -451,7 +451,7 @@ export default function ProfilePage() {
           <div className="card">
             <h3 style={{ marginBottom: '0.5rem' }}>Create a Team</h3>
             <p className="text-secondary" style={{ fontSize: '0.8125rem', marginBottom: '0.75rem' }}>
-              Team plan: $49.95/month, up to 10 members. Track training, view activity, and provide Pro access.
+              Team plan: $49.95/month, up to 5 members. Track training, view activity, and provide Pro access.
             </p>
             {showCreateTeam ? (
               <div className="row" style={{ gap: '0.5rem' }}>

@@ -160,7 +160,7 @@ router.post("/invite", auth, requireRole("manager", "admin"), async (req, res) =
     if (team.seats_used >= team.seats_purchased) {
       return res.status(403).json({
         error: "No seats available",
-        message: "Your team plan supports up to 10 members.",
+        message: "Your team plan supports up to 5 members.",
         seats_purchased: team.seats_purchased,
         seats_used: team.seats_used,
       });
