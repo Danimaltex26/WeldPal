@@ -7,7 +7,9 @@ import { createClient } from "@supabase/supabase-js";
 
 const router = Router();
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY)
+  : null;
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -19,6 +21,11 @@ const supabase = createClient(
 // express.raw({ type: 'application/json' }) is applied at the app.js mount point.
 router.post("/", async (req, res) => {
   const sig = req.headers["stripe-signature"];
+
+  if (!stripe) {
+    console.error("[Stripe] STRIPE_SECRET_KEY not configured");
+    return res.status(500).send("Stripe not configured");
+  }
 
   let event;
   try {

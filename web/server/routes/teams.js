@@ -10,7 +10,9 @@ import { requireRole } from "../middleware/requireRole.js";
 import { sendTeamInviteEmail } from "../utils/email.js";
 
 const router = Router();
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY)
+  : null;
 const TEAM_PRICE_ID = process.env.STRIPE_TEAM_PRICE_ID;
 const APP_URL = process.env.APP_URL || "https://weldpal.tradepals.net";
 
