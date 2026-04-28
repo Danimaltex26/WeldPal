@@ -424,7 +424,46 @@ export default function ProfilePage() {
         </div>
 
         {/* Team */}
-        {profile?.team_id ? (
+        {profile?.team_id && profile?.team_subscription_status === 'pending' ? (
+          <div className="card">
+            <div className="row-between" style={{ alignItems: 'center', marginBottom: '0.5rem' }}>
+              <h3 style={{ margin: 0 }}>{profile.team_name || 'Your Team'}</h3>
+              <span className="badge badge-amber">Payment Pending</span>
+            </div>
+            <p className="text-secondary" style={{ fontSize: '0.8125rem', marginBottom: '1rem' }}>
+              Complete payment to activate your team and start inviting members.
+            </p>
+            <button
+              className="btn btn-primary btn-block"
+              onClick={async () => {
+                try {
+                  const res = await apiPost('/teams/create', { teamName: profile.team_name });
+                  if (res.checkoutUrl) window.location.href = res.checkoutUrl;
+                } catch (err) {
+                  setError(err.message);
+                }
+              }}
+              style={{ marginBottom: '0.5rem' }}
+            >
+              Complete Payment
+            </button>
+            <button
+              className="btn btn-ghost btn-block"
+              style={{ color: '#EF4444' }}
+              onClick={async () => {
+                if (!confirm('Cancel this team? This cannot be undone.')) return;
+                try {
+                  await apiPost('/teams/cancel');
+                  await loadProfile();
+                } catch (err) {
+                  setError(err.message);
+                }
+              }}
+            >
+              Cancel Team
+            </button>
+          </div>
+        ) : profile?.team_id ? (
           <div className="card">
             <div className="row-between" style={{ alignItems: 'center' }}>
               <div>

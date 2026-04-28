@@ -36,7 +36,26 @@ router.post("/create", auth, async (req, res) => {
     const userId = req.user.id;
     const profile = req.profile;
 
+    // If user already manages a pending team, retry checkout instead of blocking
     if (profile.role === "manager") {
+      const { data: existingTeam } = await supabasePublic
+        .from("teams")
+        .select("*")
+        .eq("manager_id", userId)
+        .single();
+
+      if (existingTeam?.subscription_status === "pending" && stripe && TEAM_PRICE_ID) {
+        const session = await stripe.checkout.sessions.create({
+          mode: "subscription",
+          customer_email: profile.email,
+          line_items: [{ price: TEAM_PRICE_ID, quantity: 1 }],
+          metadata: { team_id: existingTeam.id, manager_id: userId },
+          success_url: `${APP_URL}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${APP_URL}/profile`,
+        });
+        return res.json({ checkoutUrl: session.url, team: existingTeam });
+      }
+
       return res.status(400).json({ error: "You already manage a team" });
     }
     if (profile.team_id) {
@@ -130,6 +149,58 @@ router.get("/billing-portal", auth, requireRole("manager", "admin"), async (req,
     return res.json({ url: portalSession.url });
   } catch (err) {
     console.error("[Teams] Billing portal error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── POST /api/teams/cancel ────────────────────────────────────────────────────
+// Cancel a pending team (abandoned checkout). Deletes the team and resets profile.
+
+router.post("/cancel", auth, requireRole("manager", "admin"), async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const { data: team } = await supabasePublic
+      .from("teams")
+      .select("*")
+      .eq("manager_id", userId)
+      .single();
+
+    if (!team) {
+      return res.status(404).json({ error: "Team not found" });
+    }
+
+    if (team.subscription_status !== "pending" && team.subscription_status !== "cancelled") {
+      return res.status(400).json({ error: "Can only cancel pending or cancelled teams. Use Manage Billing to cancel an active subscription." });
+    }
+
+    // Remove all team members
+    await supabasePublic
+      .from("team_members")
+      .delete()
+      .eq("team_id", team.id);
+
+    // Clear team_id and role on all profiles
+    await supabasePublic
+      .from("profiles")
+      .update({ team_id: null, role: "tech" })
+      .eq("team_id", team.id);
+
+    // Delete team invites
+    await supabasePublic
+      .from("team_invites")
+      .delete()
+      .eq("team_id", team.id);
+
+    // Delete the team
+    await supabasePublic
+      .from("teams")
+      .delete()
+      .eq("id", team.id);
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("[Teams] Cancel error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 });

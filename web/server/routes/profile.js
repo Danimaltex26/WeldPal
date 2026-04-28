@@ -49,9 +49,24 @@ router.get("/", auth, async (req, res) => {
         .gte("created_at", startOfMonth),
     ]);
 
+    // Fetch team info if user is on a team
+    let team_name = null;
+    let team_subscription_status = null;
+    if (profile.team_id) {
+      const { data: team } = await supabasePublic
+        .from("teams")
+        .select("team_name, subscription_status")
+        .eq("id", profile.team_id)
+        .maybeSingle();
+      team_name = team?.team_name || null;
+      team_subscription_status = team?.subscription_status || null;
+    }
+
     return res.json({
       profile: {
         ...profile,
+        team_name,
+        team_subscription_status,
         welding_processes: prefsRes.data?.welding_processes || [],
         certifications: prefsRes.data?.certifications || [],
         primary_industry: prefsRes.data?.primary_industry || null,
