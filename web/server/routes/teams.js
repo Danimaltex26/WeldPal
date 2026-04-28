@@ -174,16 +174,22 @@ router.post("/cancel", auth, requireRole("manager", "admin"), async (req, res) =
       return res.status(400).json({ error: "Can only cancel pending or cancelled teams. Use Manage Billing to cancel an active subscription." });
     }
 
+    // Reset ALL profiles on this team (including manager) before deleting
+    await supabasePublic
+      .from("profiles")
+      .update({ team_id: null, role: "tech" })
+      .eq("team_id", team.id);
+
+    // Also explicitly reset the manager (in case team_id was already null)
+    await supabasePublic
+      .from("profiles")
+      .update({ team_id: null, role: "tech" })
+      .eq("id", userId);
+
     // Remove all team members
     await supabasePublic
       .from("team_members")
       .delete()
-      .eq("team_id", team.id);
-
-    // Clear team_id and role on all profiles
-    await supabasePublic
-      .from("profiles")
-      .update({ team_id: null, role: "tech" })
       .eq("team_id", team.id);
 
     // Delete team invites

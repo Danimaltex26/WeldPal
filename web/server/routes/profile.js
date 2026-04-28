@@ -58,8 +58,19 @@ router.get("/", auth, async (req, res) => {
         .select("team_name, subscription_status")
         .eq("id", profile.team_id)
         .maybeSingle();
-      team_name = team?.team_name || null;
-      team_subscription_status = team?.subscription_status || null;
+
+      if (team) {
+        team_name = team.team_name || null;
+        team_subscription_status = team.subscription_status || null;
+      } else {
+        // Team was deleted but profile wasn't cleaned up — auto-fix
+        await supabasePublic
+          .from("profiles")
+          .update({ team_id: null, role: "tech" })
+          .eq("id", userId);
+        profile.team_id = null;
+        profile.role = "tech";
+      }
     }
 
     return res.json({
