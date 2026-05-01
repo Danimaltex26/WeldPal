@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiGet, apiPatch, apiPost } from '../utils/api';
 import LoadingSpinner from '../components/LoadingSpinner';
+import Paywall from '../components/Paywall';
 
 const PROCESS_OPTIONS = ['MIG/GMAW', 'TIG/GTAW', 'Stick/SMAW', 'Flux-Core/FCAW', 'Submerged Arc/SAW'];
 const CERT_OPTIONS = ['CW', 'CAWI', 'CWI', 'CWS', 'CRAW', 'CWEng'];
@@ -535,20 +536,31 @@ export default function ProfilePage() {
         )}
 
         {/* Upgrade to Pro */}
-        {isFree && (
-          <div className="card" style={{ textAlign: 'center', padding: '1.5rem' }}>
-            <h3 style={{ marginBottom: '0.5rem' }}>Upgrade to Pro</h3>
-            <p className="text-secondary" style={{ fontSize: '0.8125rem', marginBottom: '1rem' }}>
-              Unlimited photo analyses, troubleshoot sessions, AI reference lookups, full training content, and priority processing.
-            </p>
-            <a
-              href="https://tradepals.net/#pricing"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-primary btn-block"
+        {isFree && <Paywall />}
+
+        {/* Subscription management for Pro users */}
+        {!isFree && (
+          <div className="card">
+            <div className="row-between" style={{ alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0 }}>Subscription</h3>
+                <p className="text-secondary" style={{ fontSize: '0.875rem' }}>
+                  Unlimited analyses, troubleshooting, training, and reference lookups.
+                </p>
+              </div>
+              <span className="badge badge-green">Pro</span>
+            </div>
+            <button
+              className="btn btn-secondary btn-block"
+              style={{ marginTop: '0.75rem' }}
+              onClick={async () => {
+                const { getManagementURL } = await import('../utils/revenuecat');
+                const url = await getManagementURL();
+                if (url) window.open(url, '_blank');
+              }}
             >
-              View Pro Plans
-            </a>
+              Manage Subscription
+            </button>
           </div>
         )}
 
