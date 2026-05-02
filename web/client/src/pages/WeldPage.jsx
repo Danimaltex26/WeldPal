@@ -212,7 +212,6 @@ export default function WeldPage() {
               id="weld-files"
               type="file"
               accept="image/*"
-              capture="environment"
               multiple
               onChange={onPickFiles}
               style={{ display: 'none' }}
