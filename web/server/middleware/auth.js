@@ -45,6 +45,16 @@ export default async function auth(req, res, next) {
       req.profile = profile;
     }
 
+    // Read actual subscription tier from public.subscriptions
+    const { data: sub } = await supabase
+      .from("subscriptions")
+      .select("tier")
+      .eq("user_id", user.id)
+      .eq("app", "weldpal")
+      .maybeSingle();
+
+    req.profile.subscription_tier = sub?.tier || "free";
+
     // Team-tier override: if user is on an active team, grant Pro
     if (req.profile.team_id && req.profile.subscription_tier === "free") {
       const { data: team } = await supabase
