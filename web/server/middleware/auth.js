@@ -63,7 +63,7 @@ export default async function auth(req, res, next) {
         .eq("id", req.profile.team_id)
         .maybeSingle();
 
-      if (team?.subscription_status === "active" || team?.subscription_status === "past_due") {
+      if (team?.subscription_status === "active") {
         req.profile.subscription_tier = "pro";
         req.profile.team_subscription = true;
       }
