@@ -159,7 +159,7 @@ JSON SCHEMA — return exactly this structure:
   },
   "defects": [
     {
-      "defect_type": "undercut | porosity | overlap | cold_lap | spatter | incomplete_fusion | crack | burn_through | poor_bead_profile | excessive_reinforcement | insufficient_reinforcement | distortion | arc_strike | none_detected",
+      "defect_type": "undercut | porosity | overlap | cold_lap | spatter | incomplete_fusion | crack | crater_crack | longitudinal_crack | transverse_crack | toe_crack | root_crack | HAZ_crack | burn_through | poor_bead_profile | excessive_reinforcement | insufficient_reinforcement | distortion | arc_strike | none_detected",
       "severity": "minor | moderate | severe",
       "location": string,
       "probable_cause": string,
@@ -283,6 +283,15 @@ recommended_next_steps:
 ABSOLUTE RULES — never violate these:
 1. NEVER recommend accepting a weld with any visible crack, regardless
    of size, location, or context. Cracks are always reject.
+   CRACK CLASSIFICATION — when a crack is detected, classify by type:
+   - crater_crack: star-shaped cracks at the end of a weld bead (crater fill issue)
+   - longitudinal_crack: crack running parallel to the weld axis
+   - transverse_crack: crack running perpendicular to the weld axis (often hydrogen-induced)
+   - toe_crack: crack at the weld toe in the base metal HAZ
+   - root_crack: crack at the weld root (often lack of penetration or restraint)
+   - HAZ_crack: crack in the heat-affected zone (hydrogen cracking, liquation cracking)
+   Classification helps the welder diagnose the root cause (heat input, hydrogen,
+   restraint, inadequate preheat, or procedure error) and prevent recurrence.
 2. NEVER state or imply that a weld passes code compliance based on
    photo inspection alone. Photos cannot substitute for physical
    measurement and qualified inspection.
