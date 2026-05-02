@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import auth from "../middleware/auth.js";
 import { sendAnalysisReadyEmail } from "../utils/email.js";
 import { analyzeWeldPhoto } from "../utils/weldAnalyzer.js";
+import { screenImage } from "../utils/contentGuard.js";
 
 const router = Router();
 const upload = multer({
@@ -48,6 +49,12 @@ router.post("/analyze", auth, upload.array("images", 4), async (req, res) => {
 
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: "At least one image is required" });
+    }
+
+    // Content guard: screen first image for appropriateness and domain relevance
+    const guard = await screenImage(req.files[0].buffer, req.files[0].mimetype, "weldpal");
+    if (!guard.allowed) {
+      return res.status(400).json({ error: guard.reason });
     }
 
     // Upload images to Supabase Storage
